@@ -14,23 +14,19 @@
 	limitations under the License.
 
 */
+#[cfg(all(not(feature = "std"), feature = "sgx"))]
+use crate::sgx_reexport_prelude::*;
+use std::boxed::Box;
 
-//! Some substrate-api-client extension traits.
-
-pub use substrate_api_client::ApiClientError;
-
-pub mod account;
-pub mod chain;
-pub mod node_api_factory;
-pub mod pallet_teeracle;
-pub mod pallet_teerex;
-
-#[cfg(feature = "mocks")]
-pub mod pallet_teerex_api_mock;
-
-pub use account::*;
-pub use chain::*;
-pub use pallet_teeracle::*;
-pub use pallet_teerex::*;
-
-pub type ApiResult<T> = Result<T, ApiClientError>;
+/// Exchange rate error
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+	#[error("Rest client error")]
+	RestClient(itc_rest_client::error::Error),
+	#[error("Other error")]
+	Other(Box<dyn std::error::Error>),
+	#[error("Could not retrieve any data")]
+	NoValidData,
+	#[error("Value for exchange rate is null")]
+	EmptyExchangeRate,
+}
