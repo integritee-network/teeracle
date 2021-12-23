@@ -1143,10 +1143,13 @@ name = "ita-exchange-oracle"
 version = "0.8.0"
 dependencies = [
  "itc-rest-client",
+ "lazy_static",
  "log 0.4.14 (git+https://github.com/mesalock-linux/log-sgx)",
+ "parity-scale-codec",
  "serde 1.0.136",
  "serde_json 1.0.78",
  "sgx_tstd",
+ "substrate-fixed",
  "thiserror 1.0.9",
  "url",
 ]
@@ -3907,7 +3910,7 @@ version = "1.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ee73e6e4924fe940354b8d4d98cad5231175d615cd855b758adc658c0aac6a0"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "digest 0.10.3",
  "static_assertions",
 ]

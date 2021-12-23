@@ -27,6 +27,7 @@ tokio = { version = "1.6.1", features = ["full"] }
 prometheus = { version = "0.13.0", features = ["process"] }
 warp = "0.3"
 futures = "0.3"
+parse_duration = "2.1.1"
 
 # ipfs
 ipfs-api = "0.11.0"

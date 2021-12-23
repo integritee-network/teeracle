@@ -35,7 +35,7 @@ use crate::{
 };
 use base58::ToBase58;
 use clap::{load_yaml, App};
-use codec::{Decode, Encode};
+use codec::Encode;
 use config::Config;
 use enclave::{
 	api::enclave_init,
@@ -56,21 +56,20 @@ use itp_node_api_extensions::{
 };
 use itp_settings::{
 	files::{
-		ENCRYPTED_STATE_FILE, SHARDS_PATH, SHIELDING_KEY_FILE, SIDECHAIN_PURGE_INTERVAL,
-		SIDECHAIN_PURGE_LIMIT, SIDECHAIN_STORAGE_PATH, SIGNING_KEY_FILE,
+		ENCRYPTED_STATE_FILE, SHARDS_PATH, SHIELDING_KEY_FILE, SIDECHAIN_STORAGE_PATH,
+		SIGNING_KEY_FILE,
 	},
-	sidechain::SLOT_DURATION,
+	node::MARKET_DATA_UPDATE_INTERVAL,
 };
 use its_consensus_slots::start_slot_worker;
 use its_peer_fetch::{
 	block_fetch_client::BlockFetcher, untrusted_peer_fetch::UntrustedPeerFetcher,
 };
 use its_primitives::types::SignedBlock as SignedSidechainBlock;
-use its_storage::{
-	interface::FetchBlocks, start_sidechain_pruning_loop, BlockPruner, SidechainStorageLock,
-};
+use its_storage::{interface::FetchBlocks, BlockPruner, SidechainStorageLock};
 use log::*;
-use my_node_runtime::{Event, Hash, Header};
+use my_node_runtime::Header;
+use parse_duration::parse;
 use sgx_types::*;
 use sp_core::{
 	crypto::{AccountId32, Ss58Codec},
@@ -83,16 +82,11 @@ use std::{
 	io::{stdin, Write},
 	path::{Path, PathBuf},
 	str,
-	sync::{
-		mpsc::{channel, Sender},
-		Arc,
-	},
+	sync::Arc,
 	thread,
 	time::{Duration, Instant},
 };
-use substrate_api_client::{
-	rpc::WsRpcClient, utils::FromHexString, Api, Header as HeaderTrait, XtStatus,
-};
+use substrate_api_client::{rpc::WsRpcClient, Api, Header as HeaderTrait, XtStatus};
 use teerex_primitives::ShardIdentifier;
 
 mod account_funding;
@@ -168,6 +162,13 @@ fn main() {
 		let skip_ra = smatches.is_present("skip-ra");
 		let dev = smatches.is_present("dev");
 
+		let interval = smatches
+			.value_of("interval")
+			.map_or_else(|| Ok(MARKET_DATA_UPDATE_INTERVAL), parse)
+			.unwrap_or_else(|e| panic!("Interval parsing error {:?}", e));
+
+		println!("Update exchange rate interval is {:?}", interval);
+
 		let node_api =
 			node_api_factory.create_api().expect("Failed to create parentchain node API");
 
@@ -185,6 +186,7 @@ fn main() {
 			sidechain_blockstorage,
 			skip_ra,
 			dev,
+			interval,
 			node_api,
 			tokio_handle,
 		);
@@ -266,9 +268,10 @@ fn start_worker<E, T, D>(
 	config: Config,
 	shard: &ShardIdentifier,
 	enclave: Arc<E>,
-	sidechain_storage: Arc<D>,
+	_sidechain_storage: Arc<D>,
 	skip_ra: bool,
 	dev: bool,
+	interval: Duration,
 	node_api: Api<sr25519::Pair, WsRpcClient>,
 	tokio_handle_getter: Arc<T>,
 ) where
@@ -292,6 +295,7 @@ fn start_worker<E, T, D>(
 	// initialize the enclave
 	let mrenclave = enclave.get_mrenclave().unwrap();
 	println!("MRENCLAVE={}", mrenclave.to_base58());
+	println!("MRENCLAVE in hex {:?}", hex::encode(mrenclave));
 
 	// ------------------------------------------------------------------------
 	// let new workers call us for key provisioning
@@ -328,7 +332,7 @@ fn start_worker<E, T, D>(
 	// Get the public key of our TEE.
 	let genesis_hash = node_api.genesis_hash.as_bytes().to_vec();
 	let tee_accountid = enclave_account(enclave.as_ref());
-
+	println!("MRENCLAVE account {:} ", &tee_accountid.to_ss58check());
 	// ------------------------------------------------------------------------
 	// Start prometheus metrics server.
 	if config.enable_metrics_server {
@@ -389,6 +393,12 @@ fn start_worker<E, T, D>(
 		println!("[+] We are NOT the primary validateer");
 	}
 
+	// start update exchange rate loop
+	let api5 = node_api.clone();
+	let market_enclave_api = enclave;
+	start_interval_market_update(&api5, interval, market_enclave_api.as_ref());
+
+	/*
 	let last_synced_header = init_light_client(&node_api, enclave.clone()).unwrap();
 	println!("*** [+] Finished syncing light client, syncing parent chain...");
 
@@ -516,8 +526,10 @@ fn start_worker<E, T, D>(
 			}
 		}
 	}
+	 */
 }
 
+/*
 /// Starts the execution of trusted getters in repeating intervals.
 ///
 /// The getters are executed in a pre-defined slot duration.
@@ -533,20 +545,19 @@ fn start_interval_trusted_getter_execution<E: Sidechain>(enclave_api: &E) {
 		TRUSTED_GETTERS_SLOT_DURATION,
 	);
 }
-
+*/
 /// Send extrinsic to chain according to the market data update interval in the settings
 /// with the current market data (for now only exchange rate).
 fn start_interval_market_update<E: EnclaveBase + TeeracleApi>(
 	api: &Api<sr25519::Pair, WsRpcClient>,
+	interval: Duration,
 	enclave_api: &E,
 ) {
-	use itp_settings::node::MARKET_DATA_UPDATE_INTERVAL;
-
 	schedule_on_repeating_intervals(
 		|| {
 			execute_update_market(api, enclave_api);
 		},
-		MARKET_DATA_UPDATE_INTERVAL,
+		interval,
 	);
 }
 
@@ -555,13 +566,14 @@ fn execute_update_market<E: EnclaveBase + TeeracleApi>(
 	enclave: &E,
 ) {
 	// Get market data for usd (hardcoded)
-	let updated_extrinsic = match enclave.update_market_data_xt(node_api.genesis_hash, "usd") {
-		Err(e) => {
-			error!("{:?}", e);
-			return
-		},
-		Ok(r) => r,
-	};
+	let updated_extrinsic =
+		match enclave.update_market_data_xt(node_api.genesis_hash, "TEER", "USD") {
+			Err(e) => {
+				error!("{:?}", e);
+				return
+			},
+			Ok(r) => r,
+		};
 
 	let mut hex_encoded_extrinsic = hex::encode(updated_extrinsic);
 	hex_encoded_extrinsic.insert_str(0, "0x");
@@ -603,6 +615,7 @@ where
 	}
 }
 
+/*
 type Events = Vec<frame_system::EventRecord<Event, Hash>>;
 
 fn parse_events(event: String) -> Result<Events, String> {
@@ -700,6 +713,7 @@ fn print_events(events: Events, _sender: Sender<String>) {
 		}
 	}
 }
+*/
 
 pub fn init_light_client<E: EnclaveBase + Sidechain>(
 	api: &Api<sr25519::Pair, WsRpcClient>,
@@ -720,6 +734,7 @@ pub fn init_light_client<E: EnclaveBase + Sidechain>(
 		.unwrap())
 }
 
+/*
 /// Subscribe to the node API finalized heads stream and trigger a parent chain sync
 /// upon receiving a new header.
 fn subscribe_to_parentchain_new_headers<E: EnclaveBase + Sidechain>(
@@ -754,6 +769,7 @@ fn execute_trusted_calls<E: Sidechain>(enclave_api: &E) {
 		error!("{:?}", e);
 	};
 }
+*/
 
 fn init_shard(shard: &ShardIdentifier) {
 	let path = format!("{}/{}", SHARDS_PATH, shard.encode().to_base58());
