@@ -2042,6 +2042,7 @@ dependencies = [
  "substrate-api-client",
  "substrate-bip39",
  "substrate-client-keystore",
+ "teeracle-primitives",
  "teerex-primitives",
  "tiny-bip39 0.6.2",
  "ws",
