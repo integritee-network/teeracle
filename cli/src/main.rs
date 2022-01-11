@@ -58,6 +58,7 @@ use teerex_primitives::Request;
 use ita_stf::{ShardIdentifier, TrustedCallSigned, TrustedOperation};
 use itc_rpc_client::direct_client::{DirectApi, DirectClient as DirectWorkerApi};
 use itp_api_client_extensions::{PalletTeerexApi, ADD_TO_WHITELIST, TEERACLE, TEEREX};
+use itp_time_utils::{duration_now, remaining_time};
 use itp_types::{DirectRequestStatus, RpcRequest, RpcResponse, RpcReturnValue};
 use substrate_client_keystore::{KeystoreExt, LocalKeystore};
 
@@ -295,7 +296,6 @@ fn main() {
 						println!("Enclave {}", w);
 						println!("   AccountId: {}", enclave.pubkey.to_ss58check());
 						println!("   MRENCLAVE: {}", enclave.mr_enclave.to_base58());
-						println!("   MRENCLAVE_HEX: {}", hex::encode(enclave.mr_enclave));
 						println!("   RA timestamp: {}", timestamp);
 						println!("   URL: {}", enclave.url);
 					}
@@ -437,14 +437,12 @@ fn main() {
 					)
 				})
 				.runner(move |_args: &str, matches: &ArgMatches<'_>| {
-					println!("[+] add-whitelist was called");
 					let chain_api = get_chain_api(matches);
 
 					let src = format!("{}", matches.value_of("src").unwrap());
 					let market_data_source: MarketDataSourceString = src.to_owned().into();
 
 					// get the mrenclave hex
-
 					let mrenclave_opt = match matches.value_of("mrenclave") {
 						Some(m) => match m.from_base58() {
 							Ok(m) => ShardIdentifier::decode(&mut &m[..]),
@@ -462,8 +460,6 @@ fn main() {
 					let from = get_pair_from_str(arg_from);
 					let chain_api = chain_api.set_signer(sr25519_core::Pair::from(from));
 
-					println!("[+] compose call : {}, {:?}", market_data_source, mrenclave_bytes);
-
 					let call = compose_call!(
 						chain_api.metadata.clone(),
 						TEERACLE,
@@ -476,61 +472,40 @@ fn main() {
 						compose_extrinsic!(chain_api.clone(), "Sudo", "sudo", call);
 
 					let tx_hash =
-						chain_api.send_extrinsic(xt.hex_encode(), XtStatus::InBlock).unwrap();
-					println!("[+] TrustedOperation got finalized. Hash: {:?}\n", tx_hash);
+						chain_api.send_extrinsic(xt.hex_encode(), XtStatus::Finalized).unwrap();
+					println!("[+] Add to whitelist got finalized. Hash: {:?}\n", tx_hash);
 
-					println!("waiting for confirmation of added to whitelist");
+					Ok(())
+				}),
+		)
+		.add_cmd(
+			Command::new("exchange-rate-events")
+				.description("Count the exchange rate updated events received")
+				.options(|app| {
+					app.arg(
+						Arg::with_name("duration")
+							.takes_value(true)
+							.required(true)
+							.value_name("U64")
+							.help("The time in sec during which update exchange rate events are counted"),
+					)
+				})
+				.runner(move |_args: &str, matches: &ArgMatches<'_>| {
+					let chain_api = get_chain_api(matches);
 
-					//subscribe to events
-					let (events_in, events_out) = channel();
-					chain_api.subscribe_events(events_in).unwrap();
+					let duration = matches
+						.value_of("duration")
+						.unwrap()
+						.parse()
+						.expect("duration can't be converted to u64");
 
-					//Code to catch the created event and the errors coming from chain -> break infinite loop.
-					//See issue https://github.com/scs/substrate-api-client/issues/138#issuecomment-879733584
-					'outer: loop {
-						let event_str = events_out.recv().unwrap();
-						let _unhex = Vec::from_hex(event_str).unwrap();
-						let mut _er_enc = _unhex.as_slice();
-						let _events =
-							Vec::<frame_system::EventRecord<Event, Hash>>::decode(&mut _er_enc);
-						match _events {
-							Ok(evts) =>
-								for evr in &evts {
-									println!("decoded: phase{:?} event {:?}", evr.phase, evr.event);
-									match &evr.event {
-										Event::Teeracle(te) => {
-											println!(
-												"Integritee Teeracle event received: {:?}",
-												te
-											);
-											match &te {
-												my_node_runtime::pallet_teeracle::Event::AddedToWhitelist(
-													src,
-													mrenclave,
-												) => {
-													println!(
-														"AddedToWhitelist: MRENCLAVE {:?}, SRC : {}",
-														mrenclave, src
-													);
-													break 'outer
-												}
-												_ => {
-													debug!("ignoring unsupported NFT event");
-												}
-											}
-										},
-										_ => debug!(
-											"ignoring unsupported module event: {:?}",
-											evr.event
-										),
-									}
-								},
-							Err(_) => {
-								error!("couldn't decode event record list");
-								break 'outer
-							},
-						}
-					}
+					let d = Duration::from_secs(duration);
+
+					let count = count_exchange_rate_updated_events(chain_api, d);
+
+					println!("Number of events received : ");
+					println!("   EVENTS_COUNT: {}", count);
+
 					Ok(())
 				}),
 		)
@@ -828,61 +803,61 @@ fn listen(matches: &ArgMatches<'_>) {
 							}
 						},
 						Event::Teerex(ee) => {
-							println!(">>>>>>>>>> integritee teerex event: {:?}", ee);
+							println!(">>>>>>>>>> integritee event: {:?}", ee);
 							count += 1;
 							match &ee {
-                my_node_runtime::pallet_teerex::RawEvent::AddedEnclave(
-                    accountid,
-                    url,
-                ) => {
-                    println!(
-                        "AddedEnclave: {:?} at url {}",
-                        accountid,
-                        String::from_utf8(url.to_vec())
-                            .unwrap_or_else(|_| "error".to_string())
-                    );
-                },
-                my_node_runtime::pallet_teerex::RawEvent::RemovedEnclave(
-                    accountid,
-                ) => {
-                    println!("RemovedEnclave: {:?}", accountid);
-                },
-                my_node_runtime::pallet_teerex::RawEvent::Forwarded(shard) => {
-                    println!(
-                        "Forwarded request for shard {}",
-                        shard.encode().to_base58()
-                    );
-                },
-                my_node_runtime::pallet_teerex::RawEvent::ProcessedParentchainBlock(
-                    accountid,
-                    block_hash,
-                    merkle_root,
-                ) => {
-                    println!(
-                        "ProcessedParentchainBlock from {} with hash {:?} and merkle root {:?}",
-                        accountid, block_hash, merkle_root
-                    );
-                },
-                my_node_runtime::pallet_teerex::RawEvent::ProposedSidechainBlock(
-                    accountid,
-                    block_hash,
-                ) => {
-                    println!(
-                        "ProposedSidechainBlock from {} with hash {:?}",
-                        accountid, block_hash
-                    );
-                },
-                my_node_runtime::pallet_teerex::RawEvent::ShieldFunds(
-                    incognito_account,
-                ) => {
-                    println!("ShieldFunds for {:?}", incognito_account);
-                },
-                my_node_runtime::pallet_teerex::RawEvent::UnshieldedFunds(
-                    public_account,
-                ) => {
-                    println!("UnshieldFunds for {:?}", public_account);
-                },
-            }
+								my_node_runtime::pallet_teerex::RawEvent::AddedEnclave(
+									accountid,
+									url,
+								) => {
+									println!(
+										"AddedEnclave: {:?} at url {}",
+										accountid,
+										String::from_utf8(url.to_vec())
+											.unwrap_or_else(|_| "error".to_string())
+									);
+								},
+								my_node_runtime::pallet_teerex::RawEvent::RemovedEnclave(
+									accountid,
+								) => {
+									println!("RemovedEnclave: {:?}", accountid);
+								},
+								my_node_runtime::pallet_teerex::RawEvent::Forwarded(shard) => {
+									println!(
+										"Forwarded request for shard {}",
+										shard.encode().to_base58()
+									);
+								},
+								my_node_runtime::pallet_teerex::RawEvent::ProcessedParentchainBlock(
+									accountid,
+									block_hash,
+									merkle_root,
+								) => {
+									println!(
+										"ProcessedParentchainBlock from {} with hash {:?} and merkle root {:?}",
+										accountid, block_hash, merkle_root
+									);
+								},
+								my_node_runtime::pallet_teerex::RawEvent::ProposedSidechainBlock(
+									accountid,
+									block_hash,
+								) => {
+									println!(
+										"ProposedSidechainBlock from {} with hash {:?}",
+										accountid, block_hash
+									);
+								},
+								my_node_runtime::pallet_teerex::RawEvent::ShieldFunds(
+									incognito_account,
+								) => {
+									println!("ShieldFunds for {:?}", incognito_account);
+								},
+								my_node_runtime::pallet_teerex::RawEvent::UnshieldedFunds(
+									public_account,
+								) => {
+									println!("UnshieldFunds for {:?}", public_account);
+								},
+							}
 						},
 						Event::Teeracle(te) => {
 							println!(">>>>>>>>>> integritee teeracle event: {:?}", te);
@@ -894,9 +869,11 @@ fn listen(matches: &ArgMatches<'_>) {
 									exchange_rate,
 								) => {
 									println!(
-                        "ExchangeRateUpdated: TRADING_PAIR : {}, SRC : {}, VALUE :{:?}",
-                        trading_pair, src, exchange_rate
-                    );
+                        				"ExchangeRateUpdated: TRADING_PAIR : {}, SRC : {}, VALUE :{:?}",
+										trading_pair,
+										src,
+										exchange_rate
+                    				);
 								},
 								my_node_runtime::pallet_teeracle::Event::ExchangeRateDeleted(
 									src,
@@ -1010,4 +987,48 @@ fn get_pair_from_str(account: &str) -> sr25519::AppPair {
 			_pair
 		},
 	}
+}
+
+pub fn count_exchange_rate_updated_events<P: Pair, Client: 'static>(
+	api: Api<P, Client>,
+	duration: Duration,
+) -> i32
+where
+	MultiSignature: From<P::Signature>,
+	Client: RpcClient + Subscriber + Send,
+{
+	let stop = duration_now() + duration;
+	//subscribe to events
+	let (events_in, events_out) = channel();
+	api.subscribe_events(events_in).unwrap();
+	let mut count = 0;
+
+	while remaining_time(stop).unwrap_or_default() > Duration::from_secs(0) {
+		let event_str = events_out.recv().unwrap();
+		let _unhex = Vec::from_hex(event_str).unwrap();
+		let mut _er_enc = _unhex.as_slice();
+		let _events = Vec::<frame_system::EventRecord<Event, Hash>>::decode(&mut _er_enc);
+		if let Ok(evts) = _events {
+			for evr in &evts {
+				info!("received event {:?}", evr.event);
+				if let Event::Teeracle(te) = &evr.event {
+					match &te {
+						my_node_runtime::pallet_teeracle::Event::ExchangeRateUpdated(
+							src,
+							trading_pair,
+							exchange_rate,
+						) => {
+							count += 1;
+							println!(
+								"ExchangeRateUpdated: TRADING_PAIR : {}, SRC : {}, VALUE :{:?}",
+								trading_pair, src, exchange_rate
+							);
+						},
+						_ => debug!("Ignoring teeracle event: {:?}", te),
+					}
+				}
+			}
+		}
+	}
+	count
 }
