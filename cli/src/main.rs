@@ -439,8 +439,9 @@ fn main() {
 				.runner(move |_args: &str, matches: &ArgMatches<'_>| {
 					let chain_api = get_chain_api(matches);
 
-					let src = format!("{}", matches.value_of("src").unwrap());
-					let market_data_source: MarketDataSourceString = src.to_owned().into();
+					//let src = format!("{}", matches.value_of("src").unwrap());
+					let src = matches.value_of("src").unwrap().to_string();
+					let market_data_source: MarketDataSourceString = src;
 
 					// get the mrenclave hex
 					let mrenclave_opt = match matches.value_of("mrenclave") {
@@ -461,7 +462,7 @@ fn main() {
 					let chain_api = chain_api.set_signer(sr25519_core::Pair::from(from));
 
 					let call = compose_call!(
-						chain_api.metadata.clone(),
+						chain_api.metadata,
 						TEERACLE,
 						ADD_TO_WHITELIST,
 						market_data_source,
@@ -469,7 +470,7 @@ fn main() {
 					);
 					// compose the extrinsic
 					let xt: UncheckedExtrinsicV4<_> =
-						compose_extrinsic!(chain_api.clone(), "Sudo", "sudo", call);
+						compose_extrinsic!(chain_api, "Sudo", "sudo", call);
 
 					let tx_hash =
 						chain_api.send_extrinsic(xt.hex_encode(), XtStatus::Finalized).unwrap();
