@@ -439,7 +439,6 @@ fn main() {
 				.runner(move |_args: &str, matches: &ArgMatches<'_>| {
 					let chain_api = get_chain_api(matches);
 
-					//let src = format!("{}", matches.value_of("src").unwrap());
 					let src = matches.value_of("src").unwrap().to_string();
 					let market_data_source: MarketDataSourceString = src;
 
@@ -869,12 +868,7 @@ fn listen(matches: &ArgMatches<'_>) {
 									trading_pair,
 									exchange_rate,
 								) => {
-									println!(
-                        				"ExchangeRateUpdated: TRADING_PAIR : {}, SRC : {}, VALUE :{:?}",
-										trading_pair,
-										src,
-										exchange_rate
-                    				);
+									println!("ExchangeRateUpdated: TRADING_PAIR : {}, SRC : {}, VALUE :{:?}", trading_pair, src, exchange_rate);
 								},
 								my_node_runtime::pallet_teeracle::Event::ExchangeRateDeleted(
 									src,
