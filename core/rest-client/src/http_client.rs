@@ -447,6 +447,7 @@ mod tests {
 	fn get_from_site_with_letsencrypt_isrgrootx1_valid_certificate_fails() {
 		let base_url = Url::parse("https://valid-isrgrootx1.letsencrypt.org").unwrap();
 		let result = send_http_get_request(base_url);
+		println!("letsencrypt_isrgrootx1_valid error {:?}: ", result); //Resource temporarily unavailable
 		assert_matches!(result, Err(Error::HttpReqError(_)));
 	}
 
@@ -454,6 +455,7 @@ mod tests {
 	fn get_from_site_with_letsencrypt_isrgrootx1_revoked_certificate_fails() {
 		let base_url = Url::parse("https://revoked-isrgrootx1.letsencrypt.org").unwrap();
 		let result = send_http_get_request(base_url);
+		println!("letsencrypt_isrgrootx1_revoked error {:?}: ", result); //Resource temporarily unavailable
 		assert_matches!(result, Err(Error::HttpReqError(_)));
 	}
 
@@ -461,28 +463,32 @@ mod tests {
 	fn get_from_site_with_letsencrypt_isrgrootx1_expired_certificate_fails() {
 		let base_url = Url::parse("https://expired-isrgrootx1.letsencrypt.org").unwrap();
 		let result = send_http_get_request(base_url);
-		assert_matches!(result, Err(Error::HttpReqError(_)));
+		let msg = format!("error {:?}", result.err());
+		assert!(msg.contains("CertExpired"));
 	}
 
 	#[test]
 	fn get_from_site_with_letsencrypt_isrgrootx2_valid_certificate_fails() {
 		let base_url = Url::parse("https://valid-isrgrootx2.letsencrypt.org").unwrap();
 		let result = send_http_get_request(base_url);
-		assert_matches!(result, Err(Error::HttpReqError(_)));
+		let msg = format!("error {:?}", result.err());
+		assert!(msg.contains("UnknownIssuer"));
 	}
 
 	#[test]
 	fn get_from_site_with_letsencrypt_isrgrootx2_revoked_certificate_fails() {
 		let base_url = Url::parse("https://revoked-isrgrootx2.letsencrypt.org").unwrap();
 		let result = send_http_get_request(base_url);
-		assert_matches!(result, Err(Error::HttpReqError(_)));
+		let msg = format!("error {:?}", result.err());
+		assert!(msg.contains("UnknownIssuer"));
 	}
 
 	#[test]
 	fn get_from_site_with_letsencrypt_isrgrootx2_expired_certificate_fails() {
 		let base_url = Url::parse("https://expired-isrgrootx2.letsencrypt.org").unwrap();
 		let result = send_http_get_request(base_url);
-		assert_matches!(result, Err(Error::HttpReqError(_)));
+		let msg = format!("error {:?}", result.err());
+		assert!(msg.contains("CertExpired"));
 	}
 
 	fn send_http_get_request(base_url: Url) -> Result<(Response, EncodedBody), Error> {
