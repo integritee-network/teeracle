@@ -5,6 +5,8 @@ set -euo pipefail
 #
 # source ./init_env.sh && ./teeracle1.sh
 
+echo "$CLIENT_DIR"
+
 cd "$CLIENT_DIR" || exit
 
 LOG_1="${LOG_1:-$LOG_DIR/teeracle1_demo_teeracle.log}"
