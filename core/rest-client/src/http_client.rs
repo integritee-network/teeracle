@@ -500,7 +500,7 @@ mod tests {
 				Ok(format!("anything"))
 			}
 		}
-		let http_client = HttpClient::new(true, Some(Duration::from_secs(3u64)), None, None);
+		let http_client = HttpClient::new(true, None, None, None);
 		http_client.send_request::<(), HttpTestResponse>(base_url, Method::GET, (), None, None)
 	}
 }
