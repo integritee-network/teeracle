@@ -43,7 +43,7 @@ INTERVAL=${INTERVAL:-86400}
 echo "Using node-port ${NPORT}"
 echo "Using worker-rpc-port ${RPORT}"
 echo "Using worker market data update interval ${INTERVAL}"
-echo "Count the update events during ${DURATION}"
+echo "Count the update events for ${DURATION}"
 echo ""
 
 MARKET_DATA_SRC="https://api.coingecko.com/"
@@ -63,7 +63,7 @@ echo "Reading MRENCLAVE from worker list: ${MRENCLAVE}"
 [[ -z $MRENCLAVE ]] && { echo "MRENCLAVE is empty. cannot continue" ; exit 1; }
 echo ""
 
-echo "Listen to exchange rate updated events during ${DURATION} seconds. There is no trusted data source"
+echo "Listen to ExchangeRateUpdated events for ${DURATION} seconds. There is no trusted data source"
 ${CLIENT} exchange-rate-events ${DURATION}
 echo ""
 
@@ -76,7 +76,7 @@ ${CLIENT} add-whitelist //Alice ${MARKET_DATA_SRC} ${MRENCLAVE}
 echo "MRENCLAVE in Whitelist for ${MARKET_DATA_SRC}"
 echo ""
 
-echo "Listen to exchange rate updated events during ${DURATION} seconds"
+echo "Listen to ExchangeRateUpdated events during ${DURATION} seconds"
 ${CLIENT} exchange-rate-events ${DURATION}
 echo ""
 
@@ -85,14 +85,14 @@ echo "Got ${EVENTS_COUNT} exchange rate updates from a trusted source in ${DURAT
 echo ""
 
 # the following test is for automated CI
-# it only works if you're running from fresh genesis
+# it only works if the teeracle's whitelist is empty at the start (run it from genesis)
 
 if [ "$EVENTS_COUNT" > "$MIN_EXPECTED_NUM_OF_EVENTS" ]; then
    if [ "0" = "$NO_EVENTS" ]; then
        echo "test passed"
        exit 0
    else
-       echo "test ran through but we received an exchange rate update event before the mrenclave was added to the whitelist. Have you run the script from fresh genesis?"
+       echo "The test ran through but we received ExchangeRateUpdated events before the enclave was added to the white list. Was the enclave previously whitelisted? Perhaps by another teeracle?"
        exit 1
    fi
 else

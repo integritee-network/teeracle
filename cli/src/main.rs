@@ -439,8 +439,8 @@ fn main() {
 				.runner(move |_args: &str, matches: &ArgMatches<'_>| {
 					let chain_api = get_chain_api(matches);
 
-					let src = matches.value_of("src").unwrap().to_string();
-					let market_data_source: MarketDataSourceString = src;
+					let market_data_source: MarketDataSourceString =
+						matches.value_of("src").unwrap().to_string();
 
 					// get the mrenclave
 					let mrenclave_opt = match matches.value_of("mrenclave") {
@@ -481,7 +481,7 @@ fn main() {
 		)
 		.add_cmd(
 			Command::new("exchange-rate-events")
-				.description("Count the exchange rate update events received over a period of time")
+				.description("Count the ExchangeRateUpdated events received over a period of time")
 				.options(|app| {
 					app.arg(
 						Arg::with_name("duration")
@@ -494,17 +494,16 @@ fn main() {
 				.runner(move |_args: &str, matches: &ArgMatches<'_>| {
 					let chain_api = get_chain_api(matches);
 
-					let duration = matches
+					let secs = matches
 						.value_of("duration")
 						.unwrap()
 						.parse()
 						.expect("duration can't be converted to u64");
 
-					let d = Duration::from_secs(duration);
+					let count =
+						count_exchange_rate_update_events(chain_api, Duration::from_secs(secs));
 
-					let count = count_exchange_rate_updated_events(chain_api, d);
-
-					println!("Number of exchange rate update events received : ");
+					println!("Number of ExchangeRateUpdated events received : ");
 					println!("   EVENTS_COUNT: {}", count);
 
 					Ok(())
@@ -985,7 +984,7 @@ fn get_pair_from_str(account: &str) -> sr25519::AppPair {
 	}
 }
 
-pub fn count_exchange_rate_updated_events<P: Pair, Client: 'static>(
+pub fn count_exchange_rate_update_events<P: Pair, Client: 'static>(
 	api: Api<P, Client>,
 	duration: Duration,
 ) -> i32
@@ -1000,12 +999,12 @@ where
 	api.subscribe_events(events_in).unwrap();
 	let mut count = 0;
 
-	while remaining_time(stop).unwrap_or_default() > Duration::from_secs(0) {
+	while remaining_time(stop).unwrap_or_default() > Duration::ZERO {
 		let event_str = events_out.recv().unwrap();
-		let _unhex = Vec::from_hex(event_str).unwrap();
-		let mut _er_enc = _unhex.as_slice();
-		let _events = Vec::<frame_system::EventRecord<Event, Hash>>::decode(&mut _er_enc);
-		if let Ok(evts) = _events {
+		let unhex = Vec::from_hex(event_str).unwrap();
+		let mut er_enc = unhex.as_slice();
+		let events = Vec::<frame_system::EventRecord<Event, Hash>>::decode(&mut er_enc);
+		if let Ok(evts) = events {
 			for evr in &evts {
 				info!("received event {:?}", evr.event);
 				if let Event::Teeracle(te) = &evr.event {
