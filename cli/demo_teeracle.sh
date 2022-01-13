@@ -68,12 +68,12 @@ ${CLIENT} exchange-rate-events ${DURATION}
 echo ""
 
 read NO_EVENTS <<< $($CLIENT exchange-rate-events ${DURATION} | awk '/  EVENTS_COUNT: / { print $2; exit }')
-echo "Got ${NO_EVENTS} exchange rate updates when MRENCLAVE not added in the whitelist"
+echo "Got ${NO_EVENTS} exchange rate updates when no trusted data source is in the whitelist"
 echo ""
 
 echo "Add MRENCLAVE as trusted teeracle for ${MARKET_DATA_SRC}"
 ${CLIENT} add-whitelist //Alice ${MARKET_DATA_SRC} ${MRENCLAVE}
-echo "MRENCLAVE in Whitelist "
+echo "MRENCLAVE in Whitelist for ${MARKET_DATA_SRC}"
 echo ""
 
 echo "Listen to exchange rate updated events during ${DURATION} seconds"
@@ -96,7 +96,7 @@ if [ "$EVENTS_COUNT" > "$MIN_EXPECTED_NUM_OF_EVENTS" ]; then
        exit 1
    fi
 else
-    echo "test failed: $MIN_EXPECTED_NUM_OF_EVENTS < ${EVENTS_COUNT} !"
+    echo "test failed: $MIN_EXPECTED_NUM_OF_EVENTS !< ${EVENTS_COUNT} "
     exit 1
 fi
 

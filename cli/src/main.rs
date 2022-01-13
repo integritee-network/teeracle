@@ -419,7 +419,7 @@ fn main() {
 							.takes_value(true)
 							.required(true)
 							.value_name("SS58")
-							.help("Sender's on-chain AccountId in ss58check format"),
+							.help("Sender's on-chain AccountId in ss58check format.It has to be a sudo account"),
 					)
 					.arg(
 						Arg::with_name("src")
@@ -442,7 +442,7 @@ fn main() {
 					let src = matches.value_of("src").unwrap().to_string();
 					let market_data_source: MarketDataSourceString = src;
 
-					// get the mrenclave hex
+					// get the mrenclave
 					let mrenclave_opt = match matches.value_of("mrenclave") {
 						Some(m) => match m.from_base58() {
 							Ok(m) => ShardIdentifier::decode(&mut &m[..]),
@@ -450,8 +450,8 @@ fn main() {
 						},
 						_ => panic!("at least one of `mrenclave` argument must be supplied"),
 					};
-					let mrenclave_bytes = match mrenclave_opt {
-						Ok(mrenclave) => mrenclave.to_fixed_bytes(),
+					let mrenclave = match mrenclave_opt {
+						Ok(m) => m.to_fixed_bytes(),
 						Err(e) => panic!("{}", e),
 					};
 
@@ -465,8 +465,9 @@ fn main() {
 						TEERACLE,
 						ADD_TO_WHITELIST,
 						market_data_source,
-						mrenclave_bytes
+						mrenclave
 					);
+
 					// compose the extrinsic
 					let xt: UncheckedExtrinsicV4<_> =
 						compose_extrinsic!(chain_api, "Sudo", "sudo", call);
@@ -480,14 +481,14 @@ fn main() {
 		)
 		.add_cmd(
 			Command::new("exchange-rate-events")
-				.description("Count the exchange rate updated events received")
+				.description("Count the exchange rate update events received over a period of time")
 				.options(|app| {
 					app.arg(
 						Arg::with_name("duration")
 							.takes_value(true)
 							.required(true)
 							.value_name("U64")
-							.help("The time in sec during which update exchange rate events are counted"),
+							.help("The period in seconds"),
 					)
 				})
 				.runner(move |_args: &str, matches: &ArgMatches<'_>| {
@@ -503,7 +504,7 @@ fn main() {
 
 					let count = count_exchange_rate_updated_events(chain_api, d);
 
-					println!("Number of events received : ");
+					println!("Number of exchange rate update events received : ");
 					println!("   EVENTS_COUNT: {}", count);
 
 					Ok(())
@@ -897,7 +898,7 @@ fn listen(matches: &ArgMatches<'_>) {
 										mrenclave, src
 									);
 								},
-								_ => debug!("Ignoring unsupported teeracle event: {:?}", te),
+								_ => debug!("ignoring unsupported teeracle event: {:?}", te),
 							}
 						},
 						_ => debug!("ignoring unsupported module event: {:?}", evr.event),
@@ -993,6 +994,7 @@ where
 	Client: RpcClient + Subscriber + Send,
 {
 	let stop = duration_now() + duration;
+
 	//subscribe to events
 	let (events_in, events_out) = channel();
 	api.subscribe_events(events_in).unwrap();
@@ -1019,7 +1021,7 @@ where
 								trading_pair, src, exchange_rate
 							);
 						},
-						_ => debug!("Ignoring teeracle event: {:?}", te),
+						_ => debug!("ignoring teeracle event: {:?}", te),
 					}
 				}
 			}
