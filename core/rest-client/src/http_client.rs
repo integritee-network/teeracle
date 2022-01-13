@@ -444,18 +444,22 @@ mod tests {
 	}
 
 	#[test]
+	//This test run because the request throws an error "Resource temporarily unavailable" and not because the
+	//certificate is blocked. This occurs when there is a timeout
 	fn get_from_site_with_letsencrypt_isrgrootx1_valid_certificate_fails() {
 		let base_url = Url::parse("https://valid-isrgrootx1.letsencrypt.org").unwrap();
 		let result = send_http_get_request(base_url);
-		println!("letsencrypt_isrgrootx1_valid error {:?}: ", result); //Resource temporarily unavailable
+		println!("letsencrypt_isrgrootx1_valid error {:?}: ", result);
 		assert_matches!(result, Err(Error::HttpReqError(_)));
 	}
 
 	#[test]
+	//This test run because the request throws an error "Resource temporarily unavailable" and not because the
+	//certificate is blocked. This occurs when there is a timeout
 	fn get_from_site_with_letsencrypt_isrgrootx1_revoked_certificate_fails() {
 		let base_url = Url::parse("https://revoked-isrgrootx1.letsencrypt.org").unwrap();
 		let result = send_http_get_request(base_url);
-		println!("letsencrypt_isrgrootx1_revoked error {:?}: ", result); //Resource temporarily unavailable
+		println!("letsencrypt_isrgrootx1_revoked error {:?}: ", result);
 		assert_matches!(result, Err(Error::HttpReqError(_)));
 	}
 
@@ -491,16 +495,44 @@ mod tests {
 		assert!(msg.contains("CertExpired"));
 	}
 
-	fn send_http_get_request(base_url: Url) -> Result<(Response, EncodedBody), Error> {
+	//Test to show that in the current implementation Let's Encrypt ISGR Root X1 Certificates are accepted
+	//We would like to block such certificates, but the current implementation accepts them
+	#[test]
+	fn get_from_site_with_letsencrypt_isrgrootx1_valid_certificate_works_with_no_timeout() {
 		#[derive(Serialize, Deserialize, Debug)]
-		struct HttpTestResponse {}
+		struct HttpTestResponse {
+			pub method: String,
+			pub url: String,
+		}
 
 		impl RestPath<()> for HttpTestResponse {
 			fn get_path(_: ()) -> Result<String, Error> {
-				Ok(format!("anything"))
+				Ok(format!(""))
 			}
 		}
 		let http_client = HttpClient::new(true, None, None, None);
+
+		let base_url = Url::parse("https://valid-isrgrootx1.letsencrypt.org").unwrap();
+		let (response, _encoded_body) = http_client
+			.send_request::<(), HttpTestResponse>(base_url, Method::GET, (), None, None)
+			.unwrap();
+
+		assert!(response.status_code().is_success());
+	}
+
+	fn send_http_get_request(base_url: Url) -> Result<(Response, EncodedBody), Error> {
+		#[derive(Serialize, Deserialize, Debug)]
+		struct HttpTestResponse {
+			pub method: String,
+			pub url: String,
+		}
+
+		impl RestPath<()> for HttpTestResponse {
+			fn get_path(_: ()) -> Result<String, Error> {
+				Ok(format!(""))
+			}
+		}
+		let http_client = HttpClient::new(true, Some(Duration::from_secs(3u64)), None, None);
 		http_client.send_request::<(), HttpTestResponse>(base_url, Method::GET, (), None, None)
 	}
 }
