@@ -4,6 +4,7 @@
 #   1. it is a registered enclave
 #   2. and that the code used is reliable -> the enclave is in the teeracle whitelist.
 # The teeracle's whitelist has to be empty at the start. So run it with a clean node state
+# A registered mrenclave will be added in the whitelist by a sudo account. Here //Alice
 
 # setup:
 # run all on localhost:
@@ -65,7 +66,7 @@ echo "Reading MRENCLAVE from worker list: ${MRENCLAVE}"
 [[ -z $MRENCLAVE ]] && { echo "MRENCLAVE is empty. cannot continue" ; exit 1; }
 echo ""
 
-echo "Listen to ExchangeRateUpdated events for ${DURATION} seconds. There is no trusted oracle service!"
+echo "Listen to ExchangeRateUpdated events for ${DURATION} seconds. There should be no trusted oracle service!"
 ${CLIENT} exchange-rate-events ${DURATION}
 echo ""
 
