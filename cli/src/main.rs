@@ -859,10 +859,10 @@ fn listen(matches: &ArgMatches<'_>) {
 								},
 							}
 						},
-						Event::Teeracle(te) => {
-							println!(">>>>>>>>>> integritee teeracle event: {:?}", te);
+						Event::Teeracle(teeracle_event) => {
+							println!(">>>>>>>>>> integritee teeracle event: {:?}", teeracle_event);
 							count += 1;
-							match &te {
+							match &teeracle_event {
 								my_node_runtime::pallet_teeracle::Event::ExchangeRateUpdated(
 									src,
 									trading_pair,
@@ -897,7 +897,10 @@ fn listen(matches: &ArgMatches<'_>) {
 										mrenclave, src
 									);
 								},
-								_ => debug!("ignoring unsupported teeracle event: {:?}", te),
+								_ => debug!(
+									"ignoring unsupported teeracle event: {:?}",
+									teeracle_event
+								),
 							}
 						},
 						_ => debug!("ignoring unsupported module event: {:?}", evr.event),
@@ -987,7 +990,7 @@ fn get_pair_from_str(account: &str) -> sr25519::AppPair {
 pub fn count_exchange_rate_update_events<P: Pair, Client: 'static>(
 	api: Api<P, Client>,
 	duration: Duration,
-) -> i32
+) -> u32
 where
 	MultiSignature: From<P::Signature>,
 	Client: RpcClient + Subscriber + Send,
@@ -1002,13 +1005,14 @@ where
 	while remaining_time(stop).unwrap_or_default() > Duration::ZERO {
 		let event_str = events_out.recv().unwrap();
 		let unhex = Vec::from_hex(event_str).unwrap();
-		let mut er_enc = unhex.as_slice();
-		let events = Vec::<frame_system::EventRecord<Event, Hash>>::decode(&mut er_enc);
-		if let Ok(evts) = events {
-			for evr in &evts {
-				info!("received event {:?}", evr.event);
-				if let Event::Teeracle(te) = &evr.event {
-					match &te {
+		let mut event_records_encoded = unhex.as_slice();
+		let events_result =
+			Vec::<frame_system::EventRecord<Event, Hash>>::decode(&mut event_records_encoded);
+		if let Ok(events) = events_result {
+			for event_record in &events {
+				info!("received event {:?}", event_record.event);
+				if let Event::Teeracle(event) = &event_record.event {
+					match &event {
 						my_node_runtime::pallet_teeracle::Event::ExchangeRateUpdated(
 							src,
 							trading_pair,
@@ -1020,7 +1024,7 @@ where
 								trading_pair, src, exchange_rate
 							);
 						},
-						_ => debug!("ignoring teeracle event: {:?}", te),
+						_ => debug!("ignoring teeracle event: {:?}", event),
 					}
 				}
 			}

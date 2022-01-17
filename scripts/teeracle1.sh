@@ -9,11 +9,11 @@ echo "$CLIENT_DIR"
 
 cd "$CLIENT_DIR" || exit
 
-LOG_1="${LOG_1:-$LOG_DIR/teeracle1_demo_teeracle.log}"
+LOG_1="${LOG_1:-$LOG_DIR/teeracle1_demo_whitelist.log}"
 
 echo "[teeracle1.sh] printing to logs:"
 echo "        $LOG_1"
 
 touch "$LOG_1"
 
-./demo_teeracle.sh -p 9944 -P 2000 -d 120 -i 24 2>&1 | tee "$LOG_1"
+./demo_teeracle_whitelist.sh -p 9944 -P 2000 -d 120 -i 24 2>&1 | tee "$LOG_1"
