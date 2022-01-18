@@ -443,9 +443,17 @@ mod tests {
 		assert!(msg.contains("UnknownIssuer"));
 	}
 
+	// These tests check the sending of a get request to a server with a Let's Encrypt Certificate.
+	// Let's Encrypt certificates should not be trusted -> The get method should throw an UnknownIssuer Error.
+	// Our current http connection implementation trusts Let's Encrypt ISGR Root X1 Certificates
+	// Let's Encrypt ISGR Root X2 Certificates are not trusted.
+	// See https://github.com/integritee-network/teeracle/issues/3
+
+	// Let's Encrypt ISGR Root X1 Certificates
+
 	#[test]
-	//This test run because the request throws an error "Resource temporarily unavailable" and not because the
-	//certificate is blocked. This occurs when there is a timeout
+	// FIXME: The get method throws a "Resource temporarily unavailable" when the connection timeout is exceeded.
+	// So it fails as expected, but with the wrong error
 	fn get_from_site_with_letsencrypt_isrgrootx1_valid_certificate_fails() {
 		let base_url = Url::parse("https://valid-isrgrootx1.letsencrypt.org").unwrap();
 		let result = send_http_get_request(base_url);
@@ -454,8 +462,32 @@ mod tests {
 	}
 
 	#[test]
-	//This test run because the request throws an error "Resource temporarily unavailable" and not because the
-	//certificate is blocked. This occurs when there is a timeout
+	// FIXME: The get method is successful when there is no connection timeout. This is not what we want.
+	fn get_from_site_with_letsencrypt_isrgrootx1_valid_certificate_works_with_no_timeout() {
+		#[derive(Serialize, Deserialize, Debug)]
+		struct HttpTestResponse {
+			pub method: String,
+			pub url: String,
+		}
+
+		impl RestPath<()> for HttpTestResponse {
+			fn get_path(_: ()) -> Result<String, Error> {
+				Ok(format!(""))
+			}
+		}
+		let http_client = HttpClient::new(true, None, None, None);
+
+		let base_url = Url::parse("https://valid-isrgrootx1.letsencrypt.org").unwrap();
+		let (response, _encoded_body) = http_client
+			.send_request::<(), HttpTestResponse>(base_url, Method::GET, (), None, None)
+			.unwrap();
+
+		assert!(response.status_code().is_success());
+	}
+
+	#[test]
+	// FIXME: The get method throws a "Resource temporarily unavailable" when the connection timeout is exceeded.
+	// So it fails as expected, but with the wrong error
 	fn get_from_site_with_letsencrypt_isrgrootx1_revoked_certificate_fails() {
 		let base_url = Url::parse("https://revoked-isrgrootx1.letsencrypt.org").unwrap();
 		let result = send_http_get_request(base_url);
@@ -471,6 +503,7 @@ mod tests {
 		assert!(msg.contains("CertExpired"));
 	}
 
+	// Let's Encrypt ISGR Root X2 Certificates
 	#[test]
 	fn get_from_site_with_letsencrypt_isrgrootx2_valid_certificate_fails() {
 		let base_url = Url::parse("https://valid-isrgrootx2.letsencrypt.org").unwrap();
@@ -493,31 +526,6 @@ mod tests {
 		let result = send_http_get_request(base_url);
 		let msg = format!("error {:?}", result.err());
 		assert!(msg.contains("CertExpired"));
-	}
-
-	//Test to show that in the current implementation Let's Encrypt ISGR Root X1 Certificates are accepted
-	//We would like to block such certificates, but the current implementation accepts them
-	#[test]
-	fn get_from_site_with_letsencrypt_isrgrootx1_valid_certificate_works_with_no_timeout() {
-		#[derive(Serialize, Deserialize, Debug)]
-		struct HttpTestResponse {
-			pub method: String,
-			pub url: String,
-		}
-
-		impl RestPath<()> for HttpTestResponse {
-			fn get_path(_: ()) -> Result<String, Error> {
-				Ok(format!(""))
-			}
-		}
-		let http_client = HttpClient::new(true, None, None, None);
-
-		let base_url = Url::parse("https://valid-isrgrootx1.letsencrypt.org").unwrap();
-		let (response, _encoded_body) = http_client
-			.send_request::<(), HttpTestResponse>(base_url, Method::GET, (), None, None)
-			.unwrap();
-
-		assert!(response.status_code().is_success());
 	}
 
 	fn send_http_get_request(base_url: Url) -> Result<(Response, EncodedBody), Error> {
