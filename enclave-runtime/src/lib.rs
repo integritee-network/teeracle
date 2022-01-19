@@ -49,7 +49,7 @@ use crate::{
 };
 use base58::ToBase58;
 use codec::{alloc::string::String, Decode, Encode};
-use ita_exchange_oracle::{create_coingecko_oracle, types::TradingPair, GetExchangeRate};
+use ita_exchange_oracle::{create_coin_gecko_oracle, types::TradingPair, GetExchangeRate};
 use ita_stf::{Getter, ShardIdentifier, Stf};
 use itc_direct_rpc_server::{
 	create_determine_watch, rpc_connection_registry::ConnectionRegistry,
@@ -690,11 +690,11 @@ fn update_market_data_internal(
 
 	// Get the exchange rate
 	let trading_pair = TradingPair { crypto_currency, fiat_currency };
-	let coingecko_client = create_coingecko_oracle(Arc::new(OcallApi));
-	let (rate, base_url) = match coingecko_client.get_exchange_rate(trading_pair.clone()) {
+	let coin_gecko_client = create_coin_gecko_oracle(Arc::new(OcallApi));
+	let (rate, base_url) = match coin_gecko_client.get_exchange_rate(trading_pair.clone()) {
 		Ok(r) => r,
 		Err(e) => {
-			error!("[-] Failed to get the newest exchange rate from coingecko. {:?}", e);
+			error!("[-] Failed to get the newest exchange rate from CoinGecko. {:?}", e);
 			return Err(Error::Other(e.into()))
 		},
 	};

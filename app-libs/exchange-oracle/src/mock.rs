@@ -74,6 +74,7 @@ impl ExportMetrics for MetricsExporterMock {
 }
 
 /// Mock oracle source.
+#[derive(Default)]
 pub(crate) struct OracleSourceMock;
 
 impl OracleSource for OracleSourceMock {

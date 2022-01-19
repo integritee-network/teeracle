@@ -26,7 +26,7 @@ use std::{string::String, sync::Arc, time::Instant};
 use url::Url;
 
 /// Oracle source trait used by the `ExchangeRateOracle` (strategy pattern).
-pub trait OracleSource {
+pub trait OracleSource: Default {
 	fn id(&self) -> String;
 
 	fn request_timeout(&self) -> Option<Duration>;

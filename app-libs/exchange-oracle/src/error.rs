@@ -29,6 +29,8 @@ pub enum Error {
 	EmptyExchangeRate,
 	#[error("Invalid id for crypto currency")]
 	InvalidCryptoCurrencyId,
+	#[error("Invalid id for fiat currency")]
+	InvalidFiatCurrencyId,
 	#[error("Other error")]
 	Other(Box<dyn std::error::Error>),
 }
