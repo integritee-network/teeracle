@@ -31,4 +31,6 @@ pub enum Error {
 	EmptyExchangeRate,
 	#[error("Invalid id for crypto currency")]
 	InvalidCryptoCurrencyId,
+	#[error("Invalid id for fiat currency")]
+	InvalidFiatCurrencyId,
 }

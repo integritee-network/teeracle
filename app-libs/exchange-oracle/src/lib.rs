@@ -36,6 +36,7 @@ use crate::{error::Error, types::TradingPair};
 use substrate_fixed::types::U32F32;
 
 pub mod coingecko;
+pub mod coinmarketcap;
 pub mod error;
 pub mod types;
 

@@ -122,6 +122,7 @@ impl GetExchangeRate for CoinGeckoClient {
 mod tests {
 	use super::*;
 	use core::assert_matches::assert_matches;
+	use substrate_fixed::transcendental::ZERO;
 
 	fn get_coingecko_crypto_currency_id(crypto_currency: &str) -> Result<String, Error> {
 		let url = CoinGeckoClient::base_url().unwrap();
@@ -214,9 +215,8 @@ mod tests {
 			})
 			.unwrap();
 
-		let zero = ExchangeRate::from_num(0);
 		//Ensure that get_exchange_rate return a positive rate
-		assert!(dot_usd > zero);
+		assert!(dot_usd > ZERO);
 		//Ensure that the exchange rates' values make sense
 		assert_eq!((dot_usd / bit_usd).round(), (dot_chf / bit_chf).round());
 	}
