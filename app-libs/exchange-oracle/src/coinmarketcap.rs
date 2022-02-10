@@ -30,7 +30,6 @@ use std::{
 	collections::HashMap,
 	string::{String, ToString},
 	time::Duration,
-	vec::Vec,
 };
 use url::Url;
 
@@ -39,7 +38,7 @@ const COINMARKETCAP_KEY: &str = "67db2bd8-ac38-4609-84fe-de9af99d9720"; //Has to
 const COINMARKETCAP_KEY_PARAM: &str = "CMC_PRO_API_KEY"; //Has to be changed regenerate.
 const FIAT_CURRENCY_PARAM: &str = "convert_id";
 const CRYPTO_CURRENCY_PARAM: &str = "id";
-const COINMARKETCAP_PATH: &str = "v1/cryptocurrency/quotes/latest";
+const COINMARKETCAP_PATH: &str = "v2/cryptocurrency/quotes/latest";
 //const COINMARKETCAP_PATH: &str = "v1/tools/price-conversion";
 const COINMARKETCAP_TIMEOUT: Duration = Duration::from_secs(3u64);
 
@@ -113,7 +112,6 @@ pub struct QuoteStruct {
 pub struct CoinMarketCapMarketStruct {
 	data: HashMap<String, DataStruct>,
 }
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CoinMarketCapMarket(pub CoinMarketCapMarketStruct);
 
