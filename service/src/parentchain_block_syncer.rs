@@ -41,9 +41,12 @@ where
 	ParentchainApi: ChainApi,
 	EnclaveApi: Sidechain,
 {
+	/*
 	pub fn new(parentchain_api: ParentchainApi, enclave_api: Arc<EnclaveApi>) -> Self {
 		ParentchainBlockSyncer { parentchain_api, enclave_api }
 	}
+
+	 */
 }
 
 impl<ParentchainApi, EnclaveApi> SyncParentchainBlocks

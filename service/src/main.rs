@@ -27,7 +27,6 @@ use crate::{
 	ocall_bridge::{
 		bridge_api::Bridge as OCallBridge, component_factory::OCallBridgeComponentFactory,
 	},
-	parentchain_block_syncer::{ParentchainBlockSyncer, SyncParentchainBlocks},
 	prometheus_metrics::{start_metrics_server, EnclaveMetricsReceiver, MetricsHandler},
 	sync_block_gossiper::SyncBlockGossiper,
 	utils::{check_files, extract_shard},
@@ -41,7 +40,6 @@ use enclave::{
 	api::enclave_init,
 	tls_ra::{enclave_request_state_provisioning, enclave_run_state_provisioning_server},
 };
-use futures::executor::block_on;
 use itp_enclave_api::{
 	direct_request::DirectRequest,
 	enclave_base::EnclaveBase,
@@ -61,7 +59,6 @@ use itp_settings::{
 	},
 	node::MARKET_DATA_UPDATE_INTERVAL,
 };
-use its_consensus_slots::start_slot_worker;
 use its_peer_fetch::{
 	block_fetch_client::BlockFetcher, untrusted_peer_fetch::UntrustedPeerFetcher,
 };
@@ -394,7 +391,7 @@ fn start_worker<E, T, D>(
 	}
 
 	// start update exchange rate loop
-	let api5 = node_api.clone();
+	let api5 = node_api;
 	let market_enclave_api = enclave;
 	start_interval_market_update(&api5, interval, market_enclave_api.as_ref());
 
@@ -797,6 +794,7 @@ fn enclave_account<E: EnclaveBase>(enclave_api: &E) -> AccountId32 {
 	AccountId32::from(*tee_public.as_array_ref())
 }
 
+/*
 /// Ensure we're synced up until the parentchain block where we have registered ourselves.
 fn import_parentchain_blocks_until_self_registry<
 	E: EnclaveBase + TeerexApi + Sidechain,
@@ -819,7 +817,7 @@ fn import_parentchain_blocks_until_self_registry<
 
 	Ok(last_synced_header)
 }
-
+*/
 /// Checks if we are the first validateer to register on the parentchain.
 fn we_are_primary_validateer(
 	node_api: &Api<sr25519::Pair, WsRpcClient>,
