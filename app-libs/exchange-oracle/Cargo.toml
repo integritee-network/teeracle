@@ -8,6 +8,8 @@ edition = "2018"
 default = ["std"]
 std = [
     "itc-rest-client/std",
+    "itp-enclave-metrics/std",
+    "itp-ocall-api/std",
     "log/std",
     "serde/std",
     "serde_json/std",
@@ -16,6 +18,7 @@ std = [
 ]
 sgx = [
     "itc-rest-client/sgx",
+    "itp-enclave-metrics/sgx",
     "sgx_tstd",
     "thiserror_sgx",
     "url_sgx",
@@ -42,4 +45,8 @@ substrate-fixed = { package = "substrate-fixed", git = "https://github.com/encoi
 
 # internal dependencies
 itc-rest-client = { path = "../../core/rest-client", default-features = false }
+itp-enclave-metrics = { path = "../../core-primitives/enclave-metrics", default-features = false }
+itp-ocall-api = { path = "../../core-primitives/ocall-api", default-features = false }
 
+[dev-dependencies]
+itp-test = { path = "../../core-primitives/test" }

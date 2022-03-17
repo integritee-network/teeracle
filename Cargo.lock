@@ -2267,6 +2267,9 @@ name = "ita-exchange-oracle"
 version = "0.8.0"
 dependencies = [
  "itc-rest-client",
+ "itp-enclave-metrics",
+ "itp-ocall-api",
+ "itp-test",
  "lazy_static",
  "log 0.4.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "parity-scale-codec",
@@ -2583,6 +2586,7 @@ dependencies = [
  "parity-scale-codec",
  "sgx_tstd",
  "sgx_types",
+ "substrate-fixed",
 ]
 
 [[package]]

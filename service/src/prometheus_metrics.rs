@@ -20,6 +20,7 @@
 use crate::{
 	account_funding::EnclaveAccountInfo,
 	error::{Error, ServiceResult},
+	teeracle_metrics::update_teeracle_metrics,
 };
 use async_trait::async_trait;
 use itp_enclave_metrics::EnclaveMetric;
@@ -157,6 +158,7 @@ impl ReceiveEnclaveMetrics for EnclaveMetricsReceiver {
 			EnclaveMetric::TopPoolSizeDecrement => {
 				ENCLAVE_SIDECHAIN_TOP_POOL_SIZE.dec();
 			},
+			EnclaveMetric::ExchangeRateOracle(m) => update_teeracle_metrics(m)?,
 		}
 		Ok(())
 	}
