@@ -27,21 +27,21 @@ lazy_static! {
 	/// Register Teeracle specific metrics
 
 	static ref EXCHANGE_RATE: GaugeVec =
-		register_gauge_vec!("exchange_rate", "Exchange rates partitioned into source and trading pair", &["source", "trading_pair"])
+		register_gauge_vec!("integritee_teeracle_exchange_rate", "Exchange rates partitioned into source and trading pair", &["source", "trading_pair"])
 			.unwrap();
 	static ref RESPONSE_TIME: IntGaugeVec =
-		register_int_gauge_vec!("oracle_response_times", "Response times in ms for requests that the oracle makes", &["source"])
+		register_int_gauge_vec!("integritee_teeracle_response_times", "Response times in ms for requests that the oracle makes", &["source"])
 			.unwrap();
 	static ref NUMBER_OF_REQUESTS: IntCounterVec =
-		register_int_counter_vec!("number_of_requests", "Number of requests made per source", &["source"])
+		register_int_counter_vec!("integritee_teeracle_number_of_requests", "Number of requests made per source", &["source"])
 			.unwrap();
 
 	static ref NUMBER_OF_REQUEST_FAILURES: IntCounter =
-		register_int_counter!("oracle_request_failures", "Number of requests that failed")
+		register_int_counter!("integritee_teeracle_request_failures", "Number of requests that failed")
 			.unwrap();
 
 	static ref EXTRINSIC_INCLUSION_SUCCESS: IntGauge =
-		register_int_gauge!("oracle_extrinsic_inclusion_success", "1 if extrinsics was successfully finalized, 0 if not")
+		register_int_gauge!("integritee_teeracle_extrinsic_inclusion_success", "1 if extrinsics was successfully finalized, 0 if not")
 			.unwrap();
 }
 
