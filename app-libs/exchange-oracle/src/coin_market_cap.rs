@@ -78,7 +78,7 @@ impl CoinMarketCapSource {
 }
 
 impl OracleSource for CoinMarketCapSource {
-	fn id(&self) -> String {
+	fn metrics_id(&self) -> String {
 		"coin_market_cap".to_string()
 	}
 
@@ -90,7 +90,7 @@ impl OracleSource for CoinMarketCapSource {
 		Url::parse(COINMARKETCAP_URL).map_err(|e| Error::Other(format!("{:?}", e).into()))
 	}
 
-	fn send_exchange_rate_request(
+	fn execute_exchange_rate_request(
 		&self,
 		rest_client: &mut RestClient<HttpClient>,
 		trading_pair: TradingPair,
