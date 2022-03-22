@@ -20,11 +20,12 @@ use crate::sgx_reexport_prelude::*;
 use crate::{
 	error::Error,
 	types::{TradingPair, TradingPairId},
-	ExchangeRate, GetExchangeRate,
+	GetExchangeRate,
 };
 use itc_rest_client::{http_client::HttpClient, rest_client::RestClient, RestGet, RestPath};
 use itp_enclave_metrics::{EnclaveMetric, ExchangeRateOracleMetric};
 use itp_ocall_api::EnclaveMetricsOCallApi;
+use itp_types::ExchangeRate;
 use lazy_static::lazy_static;
 use log::*;
 use serde::{Deserialize, Serialize};
