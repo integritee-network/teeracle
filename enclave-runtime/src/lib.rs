@@ -692,7 +692,7 @@ fn update_market_data_internal(
 	let trading_pair = TradingPair { crypto_currency, fiat_currency };
 	let coin_gecko_client = create_coin_gecko_oracle(Arc::new(OcallApi));
 	let (rate, base_url) = match coin_gecko_client.get_exchange_rate(trading_pair.clone()) {
-		Ok(r) => r,
+		Ok(result) => result,
 		Err(e) => {
 			error!("[-] Failed to get the newest exchange rate from CoinGecko. {:?}", e);
 			return Err(Error::Other(e.into()))
