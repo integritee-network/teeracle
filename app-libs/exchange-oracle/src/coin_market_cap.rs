@@ -24,39 +24,30 @@ use log::*;
 use serde::{Deserialize, Serialize};
 use std::{
 	collections::{BTreeMap, HashMap},
+	env,
 	string::{String, ToString},
 	time::Duration,
 };
 use url::Url;
 
 const COINMARKETCAP_URL: &str = "https://pro-api.coinmarketcap.com";
-const COINMARKETCAP_KEY: &str = "67db2bd8-ac38-4609-84fe-de9af99d9720"; //Has to be changed regenerate.
-const COINMARKETCAP_KEY_PARAM: &str = "CMC_PRO_API_KEY"; //Has to be changed regenerate.
+const COINMARKETCAP_KEY_PARAM: &str = "CMC_PRO_API_KEY";
 const FIAT_CURRENCY_PARAM: &str = "convert_id";
 const CRYPTO_CURRENCY_PARAM: &str = "id";
-const COINMARKETCAP_PATH: &str = "v2/cryptocurrency/quotes/latest";
-//const COINMARKETCAP_PATH: &str = "v1/tools/price-conversion";
+const COINMARKETCAP_PATH: &str = "v2/cryptocurrency/quotes/latest"; //For free plan
 const COINMARKETCAP_TIMEOUT: Duration = Duration::from_secs(3u64);
 
-//From https://pro-api.coinmarketcap.com/v1/cryptocurrency/map?CMC_PRO_API_KEY=COINMARKETCAP_KEY
 lazy_static! {
-	static ref CRYPTO_SYMBOL_ID_MAP: HashMap<&'static str, &'static str> = HashMap::from([
-		("DOT", "6636"),//id":6636,"name":"Polkadot","symbol":"DOT"
-		("TEER", "13323"), //"id":13323,"name":"Integritee Network","symbol":"TEER"
-		("KSM", "5034"), //"id":5034,"name":"Kusama","symbol":"KSM"
-		("BTC", "1"), //"id":1,"name":"Bitcoin","symbol":"BTC"
-	]);
+	static ref CRYPTO_SYMBOL_ID_MAP: HashMap<&'static str, &'static str> =
+		HashMap::from([("DOT", "6636"), ("TEER", "13323"), ("KSM", "5034"), ("BTC", "1"),]);
+	static ref COINMARKETCAP_KEY: String =
+		env::var("COINMARKETCAP_KEY").unwrap_or_else(|_| "".to_string());
 }
 
-//From https://pro-api.coinmarketcap.com/v1/fiat/map?CMC_PRO_API_KEY=COINMARKETCAP_KEY
 lazy_static! {
 	static ref FIAT_SYMBOL_ID_MAP: HashMap<&'static str, &'static str> =
 		HashMap::from([("USD", "2781"), ("EUR", "2790"), ("CHF", "2785"), ("JPY", "2797"),]);
 }
-//FOR free plan:
-//https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?id=13323&convert_id=2781&CMC_PRO_API_KEY=67db2bd8-ac38-4609-84fe-de9af99d9720
-//id=13323, 5034, .... but only 1 convert options
-//{"status":{"timestamp":"2022-01-13T17:43:34.270Z","error_code":0,"error_message":null,"elapsed":30,"credit_count":1,"notice":null},"data":{"13323":{"id":13323,"name":"Integritee Network","symbol":"TEER","slug":"integritee-network","num_market_pairs":1,"date_added":"2021-10-26T15:04:11.000Z","tags":[],"max_supply":10000000,"circulating_supply":0,"total_supply":10000000,"is_active":1,"platform":null,"cmc_rank":4900,"is_fiat":0,"last_updated":"2022-01-13T17:42:00.000Z","quote":{"2781":{"price":4.967298630193371,"volume_24h":72743.61342986,"volume_change_24h":182.2754,"percent_change_1h":-1.00275087,"percent_change_24h":24.14973926,"percent_change_7d":54.10997674,"percent_change_30d":47.44551742,"percent_change_60d":2.02125024,"percent_change_90d":2.02125024,"market_cap":0,"market_cap_dominance":0,"fully_diluted_market_cap":49672986.3,"last_updated":"2022-01-13T17:42:00.000Z"}}}}}
 
 #[derive(Default)]
 pub struct CoinMarketCapSource;
@@ -104,7 +95,7 @@ impl OracleSource for CoinMarketCapSource {
 				&[
 					(FIAT_CURRENCY_PARAM, &fiat_id),
 					(CRYPTO_CURRENCY_PARAM, &crypto_id),
-					(COINMARKETCAP_KEY_PARAM, COINMARKETCAP_KEY),
+					(COINMARKETCAP_KEY_PARAM, &COINMARKETCAP_KEY),
 				],
 			)
 			.map_err(Error::RestClient)?;

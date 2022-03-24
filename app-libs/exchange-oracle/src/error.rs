@@ -31,6 +31,8 @@ pub enum Error {
 	InvalidCryptoCurrencyId,
 	#[error("Invalid id for fiat currency")]
 	InvalidFiatCurrencyId,
+	#[error("Could not retrieve the API KEY")]
+	NoValidApiKey,
 	#[error("Other error")]
 	Other(Box<dyn std::error::Error>),
 }
