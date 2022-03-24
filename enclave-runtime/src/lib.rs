@@ -726,7 +726,7 @@ where
 	MetricsExporter: ExportMetrics,
 {
 	let (rate, base_url) = match oracle.get_exchange_rate(trading_pair.clone()) {
-		Ok(r) => r,
+		Ok(result) => result,
 		Err(e) => return Err(Error::Other(e.into())),
 	};
 
