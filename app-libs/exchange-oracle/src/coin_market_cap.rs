@@ -111,8 +111,6 @@ impl OracleSource for CoinMarketCapSource {
 
 		let data_struct = response.0;
 
-		println!("Got data struct {:?}", data_struct);
-
 		let data = match data_struct.data.get(&crypto_id) {
 			Some(d) => d,
 			None => {

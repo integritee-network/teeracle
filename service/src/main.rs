@@ -34,7 +34,7 @@ use crate::{
 };
 use base58::ToBase58;
 use clap::{load_yaml, App};
-use codec::Encode;
+use codec::{Decode, Encode};
 use config::Config;
 use enclave::{
 	api::enclave_init,
@@ -73,6 +73,7 @@ use sp_core::{
 	sr25519,
 };
 use sp_keyring::AccountKeyring;
+use sp_runtime::OpaqueExtrinsic;
 use std::{
 	fs::{self, File},
 	io::{stdin, Write},
@@ -575,24 +576,35 @@ fn execute_update_market<E: TeeracleApi>(node_api: &Api<sr25519::Pair, WsRpcClie
 			Ok(r) => r,
 		};
 
-	let mut hex_encoded_extrinsic = hex::encode(updated_extrinsic);
-	hex_encoded_extrinsic.insert_str(0, "0x");
-
-	// Send the extrinsic to the parentchain and wait for InBlock confirmation.
-	println!("[>] Update the exchange rate (send the extrinsic)");
-	let extrinsic_hash = match node_api.send_extrinsic(hex_encoded_extrinsic, XtStatus::InBlock) {
+	let extrinsics: Vec<OpaqueExtrinsic> = match Decode::decode(&mut updated_extrinsic.as_slice()) {
+		Ok(calls) => calls,
 		Err(e) => {
 			error!("{:?}: ", e);
-			set_extrinsics_inclusion_success(false);
 			return
-		},
-		Ok(r) => {
-			set_extrinsics_inclusion_success(true);
-			r
 		},
 	};
 
-	println!("[<] Extrinsic got included into a block. Hash: {:?}\n", extrinsic_hash);
+	// Send the extrinsics to the parentchain and wait for InBlock confirmation.
+	for call in extrinsics.into_iter() {
+		let mut hex_encoded_extrinsic = hex::encode(call.encode());
+		hex_encoded_extrinsic.insert_str(0, "0x");
+
+		println!("[>] Update the exchange rate (send the extrinsic)");
+		let extrinsic_hash = match node_api.send_extrinsic(hex_encoded_extrinsic, XtStatus::InBlock)
+		{
+			Err(e) => {
+				error!("{:?}: ", e);
+				set_extrinsics_inclusion_success(false);
+				return
+			},
+			Ok(r) => {
+				set_extrinsics_inclusion_success(true);
+				r
+			},
+		};
+
+		println!("[<] Extrinsic got included into a block. Hash: {:?}\n", extrinsic_hash);
+	}
 }
 
 /// Schedules a task on perpetually looping intervals.
