@@ -13,6 +13,7 @@ env:
   CLIENT_BIN: integritee-cli
   ENCLAVE_BIN: enclave.signed.so
   LOG_DIR: log
+  COINMARKETCAP_KEY: ${{ secrets.COINMARKETCAP_KEY }}
 
 jobs:
   cancel_previous_runs:
