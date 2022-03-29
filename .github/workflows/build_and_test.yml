@@ -36,7 +36,7 @@ jobs:
       - name: Test Service & Client
         run: cargo test
         env:
-          COINMARKETCAP_KEY: ${{ secrets.COINMARKETCAP_KEY}}
+          COINMARKETCAP_KEY: ${{ secrets.COINMARKETCAP_KEY }}
       - name: Test Enclave # cargo test is not supported, see: https://github.com/apache/incubator-teaclave-sgx-sdk/issues/232
         run: |
           cd bin
@@ -109,7 +109,7 @@ jobs:
 
     env:
       BIN_DIR: bin
-      COINMARKETCAP_KEY: ${{ secrets.COINMARKETCAP_KEY}}
+      COINMARKETCAP_KEY: ${{ secrets.COINMARKETCAP_KEY }}
 
     steps:
       - uses: actions/checkout@v2
