@@ -20,7 +20,6 @@ use crate::sgx_reexport_prelude::*;
 use crate::{error::Error, exchange_rate_oracle::OracleSource, types::TradingPair, ExchangeRate};
 use itc_rest_client::{http_client::HttpClient, rest_client::RestClient, RestGet, RestPath};
 use lazy_static::lazy_static;
-use log::*;
 use serde::{Deserialize, Serialize};
 use std::{
 	collections::{BTreeMap, HashMap},
@@ -34,14 +33,13 @@ const COINMARKETCAP_URL: &str = "https://pro-api.coinmarketcap.com";
 const COINMARKETCAP_KEY_PARAM: &str = "CMC_PRO_API_KEY";
 const FIAT_CURRENCY_PARAM: &str = "convert_id";
 const CRYPTO_CURRENCY_PARAM: &str = "id";
-const COINMARKETCAP_PATH: &str = "v2/cryptocurrency/quotes/latest"; //For free plan
+const COINMARKETCAP_PATH: &str = "v2/cryptocurrency/quotes/latest"; //API endpoint to get the exchange rate with a basic API plan (free)
 const COINMARKETCAP_TIMEOUT: Duration = Duration::from_secs(3u64);
 
 lazy_static! {
 	static ref CRYPTO_SYMBOL_ID_MAP: HashMap<&'static str, &'static str> =
 		HashMap::from([("DOT", "6636"), ("TEER", "13323"), ("KSM", "5034"), ("BTC", "1"),]);
-	static ref COINMARKETCAP_KEY: String =
-		env::var("COINMARKETCAP_KEY").unwrap_or_else(|_| "".to_string());
+	static ref COINMARKETCAP_KEY: String = env::var("COINMARKETCAP_KEY").unwrap_or_default();
 }
 
 lazy_static! {
@@ -104,25 +102,21 @@ impl OracleSource for CoinMarketCapSource {
 
 		let data = match data_struct.data.get(&crypto_id) {
 			Some(d) => d,
-			None => {
-				error!("Got no market data from CoinMarketCap for {} ", crypto_id);
-				return Err(Error::NoValidData)
-			},
+			None =>
+				return Err(Error::NoValidData(
+					COINMARKETCAP_URL.to_string(),
+					trading_pair.crypto_currency,
+				)),
 		};
 
 		let quote = match data.quote.get(&fiat_id) {
 			Some(q) => q,
-			None => {
-				error!("Got no market data from CoinMarketCap. Check params {:?} ", trading_pair);
-				return Err(Error::NoValidData)
-			},
+			None =>
+				return Err(Error::NoValidData(COINMARKETCAP_URL.to_string(), trading_pair.key())),
 		};
 		match quote.price {
 			Some(r) => Ok(ExchangeRate::from_num(r)),
-			None => {
-				error!("Failed to get the exchange rate {}", TradingPair::key(trading_pair));
-				Err(Error::EmptyExchangeRate)
-			},
+			None => Err(Error::EmptyExchangeRate(trading_pair)),
 		}
 	}
 }

@@ -22,7 +22,6 @@ use crate::{error::Error, exchange_rate_oracle::OracleSource, types::TradingPair
 use itc_rest_client::{http_client::HttpClient, rest_client::RestClient, RestGet, RestPath};
 use itp_types::ExchangeRate;
 use lazy_static::lazy_static;
-use log::*;
 use serde::{Deserialize, Serialize};
 use std::{
 	collections::HashMap,
@@ -92,16 +91,12 @@ impl OracleSource for CoinGeckoSource {
 
 		let list = response.0;
 		if list.is_empty() {
-			error!("Got no market data from coinGecko. Check params {:?} ", trading_pair);
-			return Err(Error::NoValidData)
+			return Err(Error::NoValidData(COINGECKO_URL.to_string(), trading_pair.key()))
 		}
 
 		match list[0].current_price {
 			Some(r) => Ok(ExchangeRate::from_num(r)),
-			None => {
-				error!("Failed to get the exchange rate {}", TradingPair::key(trading_pair));
-				Err(Error::EmptyExchangeRate)
-			},
+			None => Err(Error::EmptyExchangeRate(trading_pair)),
 		}
 	}
 }

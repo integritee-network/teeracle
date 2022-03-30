@@ -86,8 +86,10 @@ fn test_suite_exchange_rates<OracleSourceType: OracleSource>() {
 		TradingPair { crypto_currency: "BTC".to_string(), fiat_currency: "CHF".to_string() };
 	let bit_chf = oracle.get_exchange_rate(bit_to_chf).unwrap().0;
 
-	//Ensure that get_exchange_rate return a positive rate
+	//Ensure that get_exchange_rate returns a positive rate
 	assert!(dot_usd > ZERO);
-	//Ensure that the exchange rates' values make sense
+
+	//Ensure that get_exchange_rate returns a valid value by checking
+	//that the values obtained for DOT/BIT from different exchange rates are the same
 	assert_eq!((dot_usd / bit_usd).round(), (dot_chf / bit_chf).round());
 }

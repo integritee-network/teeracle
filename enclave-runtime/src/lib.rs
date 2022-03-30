@@ -699,7 +699,7 @@ fn update_market_data_internal(
 	let coin_gecko_oracle = create_coin_gecko_oracle(Arc::new(OcallApi));
 
 	match get_exchange_rate(trading_pair.clone(), coin_gecko_oracle) {
-		Ok(oc) => extrinsic_calls.push(oc),
+		Ok(opaque_call) => extrinsic_calls.push(opaque_call),
 		Err(e) => {
 			error!("[-] Failed to get the newest exchange rate from CoinGecko. {:?}", e);
 		},
