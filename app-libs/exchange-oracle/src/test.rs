@@ -69,7 +69,6 @@ fn get_exchange_rate_for_undefined_crypto_currency_fails<OracleSourceType: Oracl
 
 fn test_suite_exchange_rates<OracleSourceType: OracleSource>() {
 	let oracle = create_exchange_rate_oracle::<OracleSourceType>();
-
 	let dot_to_usd =
 		TradingPair { crypto_currency: "DOT".to_string(), fiat_currency: "USD".to_string() };
 	let dot_usd = oracle.get_exchange_rate(dot_to_usd).unwrap().0;
@@ -86,10 +85,10 @@ fn test_suite_exchange_rates<OracleSourceType: OracleSource>() {
 		TradingPair { crypto_currency: "BTC".to_string(), fiat_currency: "CHF".to_string() };
 	let bit_chf = oracle.get_exchange_rate(bit_to_chf).unwrap().0;
 
-	//Ensure that get_exchange_rate returns a positive rate
+	// Ensure that get_exchange_rate returns a positive rate
 	assert!(dot_usd > ZERO);
 
-	//Ensure that get_exchange_rate returns a valid value by checking
-	//that the values obtained for DOT/BIT from different exchange rates are the same
+	// Ensure that get_exchange_rate returns a valid value by checking
+	// that the values obtained for DOT/BIT from different exchange rates are the same
 	assert_eq!((dot_usd / bit_usd).round(), (dot_chf / bit_chf).round());
 }

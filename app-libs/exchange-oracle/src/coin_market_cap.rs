@@ -33,7 +33,7 @@ const COINMARKETCAP_URL: &str = "https://pro-api.coinmarketcap.com";
 const COINMARKETCAP_KEY_PARAM: &str = "CMC_PRO_API_KEY";
 const FIAT_CURRENCY_PARAM: &str = "convert_id";
 const CRYPTO_CURRENCY_PARAM: &str = "id";
-const COINMARKETCAP_PATH: &str = "v2/cryptocurrency/quotes/latest"; //API endpoint to get the exchange rate with a basic API plan (free)
+const COINMARKETCAP_PATH: &str = "v2/cryptocurrency/quotes/latest"; // API endpoint to get the exchange rate with a basic API plan (free)
 const COINMARKETCAP_TIMEOUT: Duration = Duration::from_secs(3u64);
 
 lazy_static! {
