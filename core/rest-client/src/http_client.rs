@@ -31,6 +31,7 @@ use http_req::{
 use log::*;
 use std::{
 	collections::HashMap,
+	convert::TryFrom,
 	str::FromStr,
 	string::{String, ToString},
 	time::Duration,
@@ -131,7 +132,7 @@ impl SendHttpRequest for HttpClient {
 		T: RestPath<U>,
 	{
 		let url = join_url(base_url, T::get_path(params)?.as_str(), query)?;
-		let uri = Uri::from_str(url.as_str()).map_err(Error::HttpReqError)?;
+		let uri = Uri::try_from(url.as_str()).map_err(Error::HttpReqError)?;
 
 		trace!("uri: {:?}", uri);
 
