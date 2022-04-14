@@ -33,6 +33,8 @@ pub trait OracleSource: Default {
 
 	fn base_url(&self) -> Result<Url, Error>;
 
+	fn root_certificate_content(&self) -> Option<String>;
+
 	fn execute_exchange_rate_request(
 		&self,
 		rest_client: &mut RestClient<HttpClient>,
@@ -66,8 +68,10 @@ where
 		self.metrics_exporter.increment_number_requests(source_id.clone());
 
 		let base_url = self.oracle_source.base_url()?;
-		let http_client = HttpClient::new(true, self.oracle_source.request_timeout(), None, None);
+		let http_client =
+			HttpClient::new(true, self.oracle_source.request_timeout(), None, None, true);
 		let mut rest_client = RestClient::new(http_client, base_url.clone());
+		rest_client.set_root_cert(self.oracle_source.root_certificate_content());
 
 		let timer_start = Instant::now();
 

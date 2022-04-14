@@ -48,6 +48,7 @@ pub trait SendHttpRequest {
 	fn send_request<U, T>(
 		&self,
 		base_url: Url,
+		root_certificate: Option<String>,
 		method: Method,
 		params: U,
 		query: Option<&Query<'_>>,
@@ -65,6 +66,7 @@ pub struct HttpClient {
 	timeout: Option<Duration>,
 	headers: Headers,
 	authorization: Option<String>,
+	authenticated_connection: bool,
 }
 
 impl Default for HttpClient {
@@ -74,6 +76,7 @@ impl Default for HttpClient {
 			timeout: None,
 			headers: Headers::new(),
 			authorization: None,
+			authenticated_connection: false,
 		}
 	}
 }
@@ -84,12 +87,14 @@ impl HttpClient {
 		timeout: Option<Duration>,
 		headers: Option<Headers>,
 		authorization: Option<String>,
+		authenticated_connection: bool,
 	) -> Self {
 		HttpClient {
 			send_null_body,
 			timeout,
 			headers: headers.unwrap_or_else(Headers::new),
 			authorization,
+			authenticated_connection,
 		}
 	}
 
@@ -123,6 +128,7 @@ impl SendHttpRequest for HttpClient {
 	fn send_request<U, T>(
 		&self,
 		base_url: Url,
+		root_certificate: Option<String>,
 		method: Method,
 		params: U,
 		query: Option<&Query<'_>>,
@@ -194,6 +200,14 @@ impl SendHttpRequest for HttpClient {
 
 		let mut writer = Vec::new();
 
+		if self.authenticated_connection {
+			let response = request
+				.send_with_pem_certificate(&mut writer, root_certificate)
+				.map_err(Error::HttpReqError)?;
+
+			return Ok((response, writer.clone()))
+		}
+
 		let response = request.send(&mut writer).map_err(Error::HttpReqError)?;
 
 		Ok((response, writer))
@@ -233,6 +247,10 @@ mod tests {
 	use http::header::CONNECTION;
 	use serde::{Deserialize, Serialize};
 	use std::vec::Vec;
+
+	const HTTPBIN_ROOT_CERT: &str = include_str!("fixtures/amazon_root_ca_1_v3.pem");
+	const COINGECKO_ROOT_CERTIFICATE: &str =
+		include_str!("fixtures/baltimore_cyber_trust_root_v3.pem");
 
 	#[test]
 	fn join_url_adds_query_parameters() {
@@ -291,6 +309,7 @@ mod tests {
 			Some(Duration::from_secs(3u64)),
 			Some(headers_connection_close()),
 			None,
+			false,
 		);
 		let base_url = Url::parse("https://httpbin.org").unwrap();
 		let query_parameters = [("order", "desc"), ("filter", "all")];
@@ -298,6 +317,7 @@ mod tests {
 		let (response, encoded_body) = http_client
 			.send_request::<(), HttpBinAnything>(
 				base_url,
+				None,
 				Method::GET,
 				(),
 				Some(&query_parameters),
@@ -333,11 +353,12 @@ mod tests {
 			Some(Duration::from_secs(3u64)),
 			Some(headers_connection_close()),
 			None,
+			false,
 		);
 		let base_url = Url::parse("https://httpbin.org").unwrap();
 
 		let (response, encoded_body) = http_client
-			.send_request::<(), HttpBinAnything>(base_url, Method::GET, (), None, None)
+			.send_request::<(), HttpBinAnything>(base_url, None, Method::GET, (), None, None)
 			.unwrap();
 
 		let response_body: HttpBinAnything =
@@ -367,6 +388,7 @@ mod tests {
 			Some(Duration::from_secs(3u64)),
 			Some(headers_connection_close()),
 			None,
+			false,
 		);
 
 		let body_test = "this is a test body with special characters {::}/-".to_string();
@@ -375,6 +397,7 @@ mod tests {
 		let (response, encoded_body) = http_client
 			.send_request::<(), HttpBinAnything>(
 				base_url,
+				None,
 				Method::POST,
 				(),
 				None,
@@ -406,11 +429,18 @@ mod tests {
 			}
 		}
 
-		let http_client = HttpClient::new(true, Some(Duration::from_secs(3u64)), None, None);
+		let http_client = HttpClient::new(true, Some(Duration::from_secs(3u64)), None, None, false);
 		let base_url = Url::parse("https://api.coingecko.com").unwrap();
 
 		let (response, encoded_body) = http_client
-			.send_request::<(), Vec<CoinGeckoCoinsList>>(base_url, Method::GET, (), None, None)
+			.send_request::<(), Vec<CoinGeckoCoinsList>>(
+				base_url,
+				None,
+				Method::GET,
+				(),
+				None,
+				None,
+			)
 			.unwrap();
 
 		let coins_list: Vec<CoinGeckoCoinsList> =
@@ -418,6 +448,115 @@ mod tests {
 
 		assert!(response.status_code().is_success());
 		assert!(!coins_list.is_empty());
+	}
+
+	#[test]
+	fn authenticated_get_works() {
+		#[derive(Serialize, Deserialize, Debug)]
+		struct HttpBinAnything {
+			pub method: String,
+			pub url: String,
+		}
+
+		impl RestPath<()> for HttpBinAnything {
+			fn get_path(_: ()) -> Result<String, Error> {
+				Ok(format!("anything"))
+			}
+		}
+
+		let http_client = HttpClient::new(
+			true,
+			Some(Duration::from_secs(3u64)),
+			Some(headers_connection_close()),
+			None,
+			true,
+		);
+		let base_url = Url::parse("https://httpbin.org").unwrap();
+		let certificate = Some(HTTPBIN_ROOT_CERT.to_string());
+
+		let (response, encoded_body) = http_client
+			.send_request::<(), HttpBinAnything>(base_url, certificate, Method::GET, (), None, None)
+			.unwrap();
+
+		let response_body: HttpBinAnything =
+			deserialize_response_body(encoded_body.as_slice()).unwrap();
+
+		assert!(response.status_code().is_success());
+		assert!(!response_body.url.is_empty());
+		assert_eq!(response_body.method.as_str(), "GET");
+	}
+
+	#[test]
+	fn authenticated_get_without_root_certificate_fails() {
+		#[derive(Serialize, Deserialize, Debug)]
+		struct HttpBinAnything {
+			pub method: String,
+			pub url: String,
+		}
+
+		impl RestPath<()> for HttpBinAnything {
+			fn get_path(_: ()) -> Result<String, Error> {
+				Ok(format!("anything"))
+			}
+		}
+
+		let http_client = HttpClient::new(
+			true,
+			Some(Duration::from_secs(3u64)),
+			Some(headers_connection_close()),
+			None,
+			true,
+		);
+		let base_url = Url::parse("https://httpbin.org").unwrap();
+
+		let result = http_client.send_request::<(), HttpBinAnything>(
+			base_url,
+			None,
+			Method::GET,
+			(),
+			None,
+			None,
+		);
+		assert_matches!(result, Err(Error::HttpReqError(_)));
+		let msg = format!("error {:?}", result.err());
+		assert!(msg.contains("UnknownIssuer"));
+	}
+
+	#[test]
+	fn authenticated_get_with_wrong_root_certificate_fails() {
+		#[derive(Serialize, Deserialize, Debug)]
+		struct HttpBinAnything {
+			pub method: String,
+			pub url: String,
+		}
+
+		impl RestPath<()> for HttpBinAnything {
+			fn get_path(_: ()) -> Result<String, Error> {
+				Ok(format!("anything"))
+			}
+		}
+
+		let http_client = HttpClient::new(
+			true,
+			Some(Duration::from_secs(3u64)),
+			Some(headers_connection_close()),
+			None,
+			true,
+		);
+		let base_url = Url::parse("https://httpbin.org").unwrap();
+		let certificate = Some(COINGECKO_ROOT_CERTIFICATE.to_string());
+
+		let result = http_client.send_request::<(), HttpBinAnything>(
+			base_url,
+			certificate,
+			Method::GET,
+			(),
+			None,
+			None,
+		);
+		assert_matches!(result, Err(Error::HttpReqError(_)));
+		let msg = format!("error {:?}", result.err());
+		assert!(msg.contains("UnknownIssuer"));
 	}
 
 	fn headers_connection_close() -> Headers {
@@ -433,115 +572,5 @@ mod tests {
 		serde_json::from_slice::<'a, T>(encoded_body).map_err(|err| {
 			Error::DeserializeParseError(err, String::from_utf8_lossy(encoded_body).to_string())
 		})
-	}
-
-	#[test]
-	fn get_from_site_with_self_signed_certificate_fails() {
-		let base_url = Url::parse("https://self-signed.badssl.com").unwrap();
-		let result = send_http_get_request(base_url);
-		assert_matches!(result, Err(Error::HttpReqError(_)));
-		let msg = format!("error {:?}", result.err());
-		assert!(msg.contains("UnknownIssuer"));
-	}
-
-	// These tests check the sending of a get request to a server with a Let's Encrypt Certificate.
-	// Let's Encrypt certificates should not be trusted -> The get method should throw an UnknownIssuer Error.
-	// Our current http connection implementation trusts Let's Encrypt ISGR Root X1 Certificates
-	// Let's Encrypt ISGR Root X2 Certificates are not trusted.
-	// See https://github.com/integritee-network/teeracle/issues/3
-
-	// Let's Encrypt ISGR Root X1 Certificates
-
-	#[test]
-	// FIXME: The get method throws a "Resource temporarily unavailable" when the connection timeout is exceeded.
-	// So it fails as expected, but with the wrong error
-	fn get_from_site_with_letsencrypt_isrgrootx1_valid_certificate_fails() {
-		let base_url = Url::parse("https://valid-isrgrootx1.letsencrypt.org").unwrap();
-		let result = send_http_get_request(base_url);
-		println!("letsencrypt_isrgrootx1_valid error {:?}: ", result);
-		assert_matches!(result, Err(Error::HttpReqError(_)));
-	}
-
-	#[test]
-	// FIXME: The get method is successful when there is no connection timeout. This is not what we want.
-	fn get_from_site_with_letsencrypt_isrgrootx1_valid_certificate_works_with_no_timeout() {
-		#[derive(Serialize, Deserialize, Debug)]
-		struct HttpTestResponse {
-			pub method: String,
-			pub url: String,
-		}
-
-		impl RestPath<()> for HttpTestResponse {
-			fn get_path(_: ()) -> Result<String, Error> {
-				Ok(format!(""))
-			}
-		}
-		let http_client = HttpClient::new(true, None, None, None);
-
-		let base_url = Url::parse("https://valid-isrgrootx1.letsencrypt.org").unwrap();
-		let (response, _encoded_body) = http_client
-			.send_request::<(), HttpTestResponse>(base_url, Method::GET, (), None, None)
-			.unwrap();
-
-		assert!(response.status_code().is_success());
-	}
-
-	#[test]
-	// FIXME: The get method throws a "Resource temporarily unavailable" when the connection timeout is exceeded.
-	// So it fails as expected, but with the wrong error
-	fn get_from_site_with_letsencrypt_isrgrootx1_revoked_certificate_fails() {
-		let base_url = Url::parse("https://revoked-isrgrootx1.letsencrypt.org").unwrap();
-		let result = send_http_get_request(base_url);
-		println!("letsencrypt_isrgrootx1_revoked error {:?}: ", result);
-		assert_matches!(result, Err(Error::HttpReqError(_)));
-	}
-
-	#[test]
-	fn get_from_site_with_letsencrypt_isrgrootx1_expired_certificate_fails() {
-		let base_url = Url::parse("https://expired-isrgrootx1.letsencrypt.org").unwrap();
-		let result = send_http_get_request(base_url);
-		let msg = format!("error {:?}", result.err());
-		assert!(msg.contains("CertExpired"));
-	}
-
-	// Let's Encrypt ISGR Root X2 Certificates
-	#[test]
-	fn get_from_site_with_letsencrypt_isrgrootx2_valid_certificate_fails() {
-		let base_url = Url::parse("https://valid-isrgrootx2.letsencrypt.org").unwrap();
-		let result = send_http_get_request(base_url);
-		let msg = format!("error {:?}", result.err());
-		assert!(msg.contains("UnknownIssuer"));
-	}
-
-	#[test]
-	fn get_from_site_with_letsencrypt_isrgrootx2_revoked_certificate_fails() {
-		let base_url = Url::parse("https://revoked-isrgrootx2.letsencrypt.org").unwrap();
-		let result = send_http_get_request(base_url);
-		let msg = format!("error {:?}", result.err());
-		assert!(msg.contains("UnknownIssuer"));
-	}
-
-	#[test]
-	fn get_from_site_with_letsencrypt_isrgrootx2_expired_certificate_fails() {
-		let base_url = Url::parse("https://expired-isrgrootx2.letsencrypt.org").unwrap();
-		let result = send_http_get_request(base_url);
-		let msg = format!("error {:?}", result.err());
-		assert!(msg.contains("CertExpired"));
-	}
-
-	fn send_http_get_request(base_url: Url) -> Result<(Response, EncodedBody), Error> {
-		#[derive(Serialize, Deserialize, Debug)]
-		struct HttpTestResponse {
-			pub method: String,
-			pub url: String,
-		}
-
-		impl RestPath<()> for HttpTestResponse {
-			fn get_path(_: ()) -> Result<String, Error> {
-				Ok(format!(""))
-			}
-		}
-		let http_client = HttpClient::new(true, Some(Duration::from_secs(3u64)), None, None);
-		http_client.send_request::<(), HttpTestResponse>(base_url, Method::GET, (), None, None)
 	}
 }

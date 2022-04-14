@@ -90,6 +90,9 @@ impl OracleSource for OracleSourceMock {
 		Url::parse("https://mock.base.url").map_err(|e| Error::Other(format!("{:?}", e).into()))
 	}
 
+	fn root_certificate_content(&self) -> Option<String> {
+		None
+	}
 	fn execute_exchange_rate_request(
 		&self,
 		_rest_client: &mut RestClient<HttpClient>,

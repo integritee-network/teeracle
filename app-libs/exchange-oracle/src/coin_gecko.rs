@@ -36,6 +36,8 @@ const COINGECKO_PARAM_CURRENCY: &str = "vs_currency";
 const COINGECKO_PARAM_COIN: &str = "ids";
 const COINGECKO_PATH: &str = "api/v3/coins/markets";
 const COINGECKO_TIMEOUT: Duration = Duration::from_secs(3u64);
+const COINGECKO_ROOT_CERTIFICATE: &str =
+	include_str!("certificates/baltimore_cyber_trust_root_v3.pem");
 
 //TODO: Get CoinGecko coins' id from coingecko API ? For now add here the mapping symbol to id
 lazy_static! {
@@ -72,6 +74,10 @@ impl OracleSource for CoinGeckoSource {
 
 	fn base_url(&self) -> Result<Url, Error> {
 		Url::parse(COINGECKO_URL).map_err(|e| Error::Other(format!("{:?}", e).into()))
+	}
+
+	fn root_certificate_content(&self) -> Option<String> {
+		Some(COINGECKO_ROOT_CERTIFICATE.to_string())
 	}
 
 	fn execute_exchange_rate_request(

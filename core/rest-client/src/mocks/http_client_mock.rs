@@ -60,6 +60,7 @@ impl SendHttpRequest for HttpClientMock {
 	fn send_request<U, T>(
 		&self,
 		base_url: Url,
+		_root_certificate: Option<String>,
 		method: Method,
 		params: U,
 		query: Option<&Query<'_>>,
@@ -128,6 +129,7 @@ mod tests {
 		let (response, encoded_response_body) = client_mock
 			.send_request::<String, ResponseBodyMock>(
 				base_url,
+				None,
 				Method::GET,
 				"/api/v1/get".to_string(),
 				None,

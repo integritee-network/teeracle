@@ -35,6 +35,10 @@ pub struct HttpClientBuilder {
 
 	/// authorization
 	authorization: Option<String>,
+
+	/// if true, the connection will only be established if the supplied certificate
+	/// matches the server's root certificate.
+	authenticated_connection: bool,
 }
 
 impl Default for HttpClientBuilder {
@@ -44,6 +48,7 @@ impl Default for HttpClientBuilder {
 			send_null_body: true,
 			headers: None,
 			authorization: None,
+			authenticated_connection: false,
 		}
 	}
 }
@@ -81,8 +86,23 @@ impl HttpClientBuilder {
 		self
 	}
 
+	/// if true, the connection will only be established if the supplied certificate
+	/// matches the server's root certificate.
+	///
+	/// Default is false
+	pub fn authenticated_connection(mut self, value: bool) -> Self {
+		self.authenticated_connection = value;
+		self
+	}
+
 	/// Create `HttpClient` with the configuration in this builder
 	pub fn build(self) -> HttpClient {
-		HttpClient::new(self.send_null_body, Some(self.timeout), self.headers, self.authorization)
+		HttpClient::new(
+			self.send_null_body,
+			Some(self.timeout),
+			self.headers,
+			self.authorization,
+			self.authenticated_connection,
+		)
 	}
 }
