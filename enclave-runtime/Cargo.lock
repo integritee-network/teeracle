@@ -1043,7 +1043,9 @@ dependencies = [
 [[package]]
 name = "http_req"
 version = "0.8.1"
+source = "git+https://github.com/integritee-network/http_req#3723e88235f2b29bc1a31835853b072ffd0455fd"
 dependencies = [
+ "log 0.4.14 (git+https://github.com/mesalock-linux/log-sgx)",
  "rustls 0.19.0 (git+https://github.com/mesalock-linux/rustls?branch=mesalock_sgx)",
  "sgx_tstd",
  "unicase",
