@@ -18,12 +18,14 @@
 #[cfg(all(not(feature = "std"), feature = "sgx"))]
 use crate::sgx_reexport_prelude::*;
 
-use crate::http_client::HttpClient;
+use crate::{http_client, http_client::HttpClient};
 use http_req::response::Headers;
 use std::{string::String, time::Duration};
 
 /// Builder for `HttpClient`
-pub struct HttpClientBuilder {
+pub struct HttpClientBuilder<SendType> {
+	send: SendType,
+
 	/// Request timeout
 	timeout: Duration,
 
@@ -35,25 +37,38 @@ pub struct HttpClientBuilder {
 
 	/// authorization
 	authorization: Option<String>,
-
-	/// if true, the connection will only be established if the supplied certificate
-	/// matches the server's root certificate.
-	authenticated_connection: bool,
 }
 
-impl Default for HttpClientBuilder {
+/*
+impl<SendType> Default for HttpClientBuilder<SendType>
+where
+	SendType: Send,
+{
 	fn default() -> Self {
 		Self {
+			send: DefaultSend,
 			timeout: Duration::from_secs(u64::MAX),
 			send_null_body: true,
 			headers: None,
 			authorization: None,
-			authenticated_connection: false,
 		}
 	}
 }
+*/
 
-impl HttpClientBuilder {
+impl<SendType> HttpClientBuilder<SendType>
+where
+	SendType: http_client::Send,
+{
+	/// Set send method.
+	///
+	/// Default is calling the default send of http-req lib: all Mozilla's root certificates
+	/// are trusted.
+	pub fn send(mut self, send: SendType) -> Self {
+		self.send = send;
+		self
+	}
+
 	/// Set request timeout
 	///
 	/// Default is no timeout
@@ -86,23 +101,14 @@ impl HttpClientBuilder {
 		self
 	}
 
-	/// if true, the connection will only be established if the supplied certificate
-	/// matches the server's root certificate.
-	///
-	/// Default is false
-	pub fn authenticated_connection(mut self, value: bool) -> Self {
-		self.authenticated_connection = value;
-		self
-	}
-
 	/// Create `HttpClient` with the configuration in this builder
-	pub fn build(self) -> HttpClient {
-		HttpClient::new(
+	pub fn build(self) -> HttpClient<SendType> {
+		HttpClient::<SendType>::new(
+			self.send,
 			self.send_null_body,
 			Some(self.timeout),
 			self.headers,
 			self.authorization,
-			self.authenticated_connection,
 		)
 	}
 }

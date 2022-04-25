@@ -31,7 +31,6 @@ use url::Url;
 pub struct RestClient<H> {
 	http_client: H,
 	baseurl: Url,
-	root_certificate: Option<String>,
 	response_headers: Headers,
 	body_wash_fn: fn(String) -> String,
 }
@@ -47,7 +46,6 @@ where
 		RestClient {
 			http_client,
 			baseurl,
-			root_certificate: None,
 			response_headers: Headers::new(),
 			body_wash_fn: std::convert::identity,
 		}
@@ -61,13 +59,6 @@ where
 	/// Response headers captured from previous request
 	pub fn response_headers(&mut self) -> &Headers {
 		&self.response_headers
-	}
-
-	/// Supply the server's root certificate
-	/// A valid certificate is required to open a tls connection when the http client
-	/// has authenticated_connection = true
-	pub fn set_root_cert(&mut self, root_certificate_content: Option<String>) {
-		self.root_certificate = root_certificate_content;
 	}
 
 	fn post_or_put<U, T>(&mut self, method: Method, params: U, data: &T) -> Result<(), Error>
@@ -141,7 +132,6 @@ where
 	{
 		let (response, encoded_body) = self.http_client.send_request::<U, T>(
 			self.baseurl.clone(),
-			self.root_certificate.clone(),
 			method,
 			params,
 			query,

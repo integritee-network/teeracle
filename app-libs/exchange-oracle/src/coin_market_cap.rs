@@ -18,7 +18,11 @@
 use crate::sgx_reexport_prelude::*;
 
 use crate::{error::Error, exchange_rate_oracle::OracleSource, types::TradingPair, ExchangeRate};
-use itc_rest_client::{http_client::HttpClient, rest_client::RestClient, RestGet, RestPath};
+use itc_rest_client::{
+	http_client::{HttpClient, SendWithCertificateVerification},
+	rest_client::RestClient,
+	RestGet, RestPath,
+};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -81,13 +85,13 @@ impl OracleSource for CoinMarketCapSource {
 		Url::parse(COINMARKETCAP_URL).map_err(|e| Error::Other(format!("{:?}", e).into()))
 	}
 
-	fn root_certificate_content(&self) -> Option<String> {
-		Some(COINMARKETCAP_ROOT_CERTIFICATE.to_string())
+	fn root_certificate_content(&self) -> String {
+		COINMARKETCAP_ROOT_CERTIFICATE.to_string()
 	}
 
 	fn execute_exchange_rate_request(
 		&self,
-		rest_client: &mut RestClient<HttpClient>,
+		rest_client: &mut RestClient<HttpClient<SendWithCertificateVerification>>,
 		trading_pair: TradingPair,
 	) -> Result<ExchangeRate, Error> {
 		let fiat_id = Self::map_fiat_currency_id(&trading_pair)?;
