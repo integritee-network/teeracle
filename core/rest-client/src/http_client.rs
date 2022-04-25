@@ -118,14 +118,13 @@ impl Send for SendWithCertificateVerification {
 	}
 }
 
-/*
-impl Default for HttpClient<SendType>
+impl<SendType> Default for HttpClient<SendType>
 where
-	SendType: Send,
+	SendType: Default,
 {
 	fn default() -> Self {
 		HttpClient {
-			send: DefaultSend,
+			send: SendType::default(),
 			send_null_body: true,
 			timeout: None,
 			headers: Headers::new(),
@@ -133,7 +132,6 @@ where
 		}
 	}
 }
-*/
 
 impl<SendType> HttpClient<SendType>
 where

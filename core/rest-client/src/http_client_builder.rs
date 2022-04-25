@@ -39,14 +39,13 @@ pub struct HttpClientBuilder<SendType> {
 	authorization: Option<String>,
 }
 
-/*
 impl<SendType> Default for HttpClientBuilder<SendType>
 where
-	SendType: Send,
+	SendType: Default,
 {
 	fn default() -> Self {
 		Self {
-			send: DefaultSend,
+			send: SendType::default(),
 			timeout: Duration::from_secs(u64::MAX),
 			send_null_body: true,
 			headers: None,
@@ -54,7 +53,6 @@ where
 		}
 	}
 }
-*/
 
 impl<SendType> HttpClientBuilder<SendType>
 where
