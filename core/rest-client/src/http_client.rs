@@ -56,7 +56,7 @@ pub trait SendHttpRequest {
 }
 
 /// Send trait used by the http client to send HTTP request, based on `http_req`.
-pub trait Send: Default {
+pub trait Send {
 	fn execute_send_request(
 		&self,
 		request: &mut Request,
@@ -79,7 +79,6 @@ pub struct HttpClient<SendType> {
 /// Automatically upgrades to TLS in case the base URL contains 'https'
 /// For https requests, the default trusted server's certificates
 /// are provided by the default tls configuration of the http_req lib
-#[derive(Default)]
 pub struct DefaultSend;
 
 impl Send for DefaultSend {
@@ -95,7 +94,6 @@ impl Send for DefaultSend {
 /// Sends a HTTPs request with the server's root certificate.
 /// The connection will only be established if the supplied certificate
 /// matches the server's root certificate.
-#[derive(Default)]
 pub struct SendWithCertificateVerification {
 	root_certificate: String,
 }
@@ -115,21 +113,6 @@ impl Send for SendWithCertificateVerification {
 		request
 			.send_with_pem_certificate(writer, Some(self.root_certificate.to_string()))
 			.map_err(Error::HttpReqError)
-	}
-}
-
-impl<SendType> Default for HttpClient<SendType>
-where
-	SendType: Default,
-{
-	fn default() -> Self {
-		HttpClient {
-			send: SendType::default(),
-			send_null_body: true,
-			timeout: None,
-			headers: Headers::new(),
-			authorization: None,
-		}
 	}
 }
 
