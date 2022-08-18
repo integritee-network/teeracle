@@ -1,3 +1,5 @@
+> The code of this repo has been moved to the [worker repository](https://github.com/integritee-network/worker).
+
 # integritee-teeracle
 
 Integritee teeracle for Integritee [node](https://github.com/integritee-network/integritee-node) or [parachain](https://github.com/integritee-network/parachain).
